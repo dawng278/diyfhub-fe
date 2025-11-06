@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react' // Thêm useEffect
-import logo from '/diyfhub-project/diyfhub-fe/src/assets/logo.svg'
-import searchNormal from '/diyfhub-project/diyfhub-fe/src/assets/search-normal.svg'
-import arrowDown from '/diyfhub-project/diyfhub-fe/src/assets/arrow-down.svg'
-import user from '/diyfhub-project/diyfhub-fe/src/assets/user.svg'
+import logo from '../../assets/logo.svg'
+import searchNormal from '../../assets/search-normal.svg'
+import arrowDown from '../../assets/arrow-down.svg'
+import user from '../../assets/user.svg'
 
 // --- Icons cho menu Mobile (Hamburger và Close) ---
 const MenuIcon = () => (
