@@ -45,7 +45,7 @@ function Navbar() {
         // 2. (Gộp) Header dính (sticky) VÀ trong suốt (bg-transparent)
         // Thêm transition-colors để đổi màu nền mượt mà khi menu mở
         <header
-            className={`w-full sticky top-0 z-50 border-b border-gray-800 transition-colors duration-300
+            className={`w-full fixed top-0 z-50 transition-colors duration-300
                 ${isMobileMenuOpen ? 'bg-[#0B0B0B]' : 'bg-transparent'}
             `}
             role="banner"
