@@ -1,5 +1,5 @@
 import React from 'react'
-import Header from './components/layout/header.jsx'
+import Header from './components/organisms/header.jsx'
 // 1. Imports cho State và Effect
 import { useState, useEffect } from 'react';
 // 2. Import hàm gọi API từ service
