@@ -20,6 +20,7 @@ const CloseIcon = () => (
 
 function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
 
     // 1. (Từ bản "chuẩn") Tự động khóa scroll của trang khi menu mobile mở
     useEffect(() => {
@@ -33,6 +34,19 @@ function Navbar() {
         };
     }, [isMobileMenuOpen]);
 
+    // Thêm hiệu ứng đổi màu header khi scroll
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrolled = window.scrollY > 10;
+            if (scrolled !== isScrolled) {
+                setIsScrolled(scrolled);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isScrolled]);
+
     const navigationItems = [
         { label: "Phim lẻ", hasDropdown: false },
         { label: "Phim bộ", hasDropdown: false },
@@ -45,9 +59,13 @@ function Navbar() {
         // 2. (Gộp) Header dính (sticky) VÀ trong suốt (bg-transparent)
         // Thêm transition-colors để đổi màu nền mượt mà khi menu mở
         <header
-            className={`w-full fixed top-0 z-50 transition-colors duration-300
-                ${isMobileMenuOpen ? 'bg-[#0B0B0B]' : 'bg-transparent'}
-            `}
+            className={`w-full fixed top-0 z-50 transition-all duration-300 ${
+                isMobileMenuOpen 
+                    ? 'bg-[#0B0B0B]' 
+                    : isScrolled 
+                        ? 'bg-[#0B0B0B]/80 backdrop-blur-sm' 
+                        : 'bg-transparent'
+            }`}
             role="banner"
         >
             {/* 3. (Từ bản "chuẩn") Dùng h-[50px] mobile, lg:h-[60px] desktop */}

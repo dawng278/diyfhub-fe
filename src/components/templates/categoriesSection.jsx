@@ -38,7 +38,7 @@ function CategoriesSection() {
 
   if (loading) {
     return (
-      <section className="py-12 px-4 md:px-8 bg-gray-900">
+      <section className="py-12 px-12 md:px-16 bg-gray-900">
         <div className="max-w-7xl mx-auto">
           <p className="text-white text-center">Đang tải thể loại...</p>
         </div>
@@ -48,7 +48,7 @@ function CategoriesSection() {
 
   if (error) {
     return (
-      <section className="py-12 px-4 md:px-8 bg-gray-900">
+      <section className="py-12 px-12 md:px-16 bg-gray-900">
         <div className="max-w-7xl mx-auto">
           <p className="text-red-500 text-center">Lỗi khi tải thể loại: {error.message}</p>
         </div>
@@ -59,7 +59,7 @@ function CategoriesSection() {
   console.log('Rendering CategoriesSection, categories:', categories)
 
   return (
-    <section className="py-12 px-4 md:px-8 bg-gray-900 relative z-0">
+    <section className="py-12 px-12 md:px-16 bg-[#030712] relative z-0">
       <div className="mx-auto">
         {/* Header */}
         <div className="mb-8">

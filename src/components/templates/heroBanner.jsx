@@ -11,6 +11,19 @@ function HeroBanner() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentMovieIndex, setCurrentMovieIndex] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detect screen size
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 1024); // < 1024px is mobile/tablet
+      };
+      
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      
+      return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         // Định nghĩa 1 hàm async để gọi API
@@ -59,11 +72,14 @@ function HeroBanner() {
       } else {
         // Hiển thị phim theo index hiện tại
         const movie = movies[currentMovieIndex];
+        // Use poster_url for mobile/tablet, thumb_url for desktop
+        const backgroundImage = isMobile ? movie.poster_url : movie.thumb_url;
+        
         content = (
-          <div className="relative w-full h-screen" style={{backgroundImage: `url(${movie.poster_url})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>
+          <div className="relative w-full h-screen" style={{backgroundImage: `url(${backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>
             {/* Gradient Overlay */}
             <div className="absolute top-0 left-0 w-full h-full bg-linear-to-r from-black/90 via-black/50 to-transparent" />
-            <div className="absolute top-0 left-0 w-full h-full bg-linear-to-b from-transparent via-transparent to-gray-900" />
+            <div className="absolute top-0 left-0 w-full h-full bg-linear-to-b from-transparent via-transparent to-[#030712]" />
 
             {/* Poster Image */}
             <div className="absolute left-1/2 -translate-x-1/2 top-24 md:left-12 md:translate-x-0 md:top-auto md:bottom-48 lg:left-16 z-10">
