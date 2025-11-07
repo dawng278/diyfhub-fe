@@ -3,18 +3,18 @@ import { ChevronLeft, ChevronRight, Star, Heart, TrendingUp, Zap } from 'lucide-
 
 const mockData = {
   topComments: [
-    { id: 1, user: 'Nguyễn Văn A', comment: 'Phim rất hay!', movie: 'Bố Già' },
-    { id: 2, user: 'Trần Thị B', comment: 'Cảm động quá', movie: 'Mắt Biếc' },
-    { id: 3, user: 'Lê Văn C', comment: 'Xuất sắc!', movie: 'Gái Già Lắm Chiêu' },
-    { id: 4, user: 'Phạm Thị D', comment: 'Tuyệt vời', movie: 'Trạng Tí' },
-    { id: 5, user: 'Hoàng Văn E', comment: 'Đỉnh cao', movie: 'Bí Mật Của Gió' },
-    { id: 6, user: 'Vũ Thị F', comment: 'Quá hay', movie: 'Lật Mặt' },
-    { id: 7, user: 'Nguyễn Thị G', comment: 'Tuyệt vời!', movie: 'Bố Già' },
-    { id: 8, user: 'Trần Văn H', comment: 'Rất cảm động', movie: 'Mắt Biếc' },
-    { id: 9, user: 'Lê Thị I', comment: 'Hay lắm!', movie: 'Gái Già Lắm Chiêu' },
-    { id: 10, user: 'Phạm Văn J', comment: 'Đỉnh cao', movie: 'Trạng Tí' },
-    { id: 11, user: 'Hoàng Thị K', comment: 'Xuất sắc', movie: 'Bí Mật Của Gió' },
-    { id: 12, user: 'Vũ Văn L', comment: 'Quá tuyệt', movie: 'Lật Mặt' }
+    { id: 1, user: 'Nguyễn Văn A', avatar: 'https://randomuser.me/api/portraits/men/1.jpg', comment: 'Phim rất hay! Diễn viên đóng quá xuất sắc, kịch bản hấp dẫn từ đầu đến cuối.', movie: 'Bố Già', likes: 124, timeAgo: '2 giờ trước' },
+    { id: 2, user: 'Trần Thị B', avatar: 'https://randomuser.me/api/portraits/women/2.jpg', comment: 'Cảm động quá, mình đã khóc rất nhiều khi xem phim này. Tuyệt vời!', movie: 'Mắt Biếc', likes: 98, timeAgo: '3 giờ trước' },
+    { id: 3, user: 'Lê Văn C', avatar: 'https://randomuser.me/api/portraits/men/3.jpg', comment: 'Xuất sắc! Đạo diễn đã làm rất tốt trong việc xây dựng tình tiết.', movie: 'Gái Già Lắm Chiêu', likes: 87, timeAgo: '5 giờ trước' },
+    { id: 4, user: 'Phạm Thị D', avatar: 'https://randomuser.me/api/portraits/women/4.jpg', comment: 'Tuyệt vời, hình ảnh đẹp, âm thanh sống động. Đáng xem!', movie: 'Trạng Tí', likes: 76, timeAgo: '1 ngày trước' },
+    { id: 5, user: 'Hoàng Văn E', avatar: 'https://randomuser.me/api/portraits/men/5.jpg', comment: 'Đỉnh cao của điện ảnh Việt Nam. Diễn xuất quá xuất sắc!', movie: 'Bí Mật Của Gió', likes: 143, timeAgo: '1 ngày trước' },
+    { id: 6, user: 'Vũ Thị F', avatar: 'https://randomuser.me/api/portraits/women/6.jpg', comment: 'Quá hay, mình đã xem đi xem lại nhiều lần mà vẫn thấy thích.', movie: 'Lật Mặt', likes: 112, timeAgo: '2 ngày trước' },
+    { id: 7, user: 'Nguyễn Thị G', avatar: 'https://randomuser.me/api/portraits/women/7.jpg', comment: 'Tuyệt vời! Diễn xuất quá đỉnh cao, âm nhạc hay.', movie: 'Bố Già', likes: 89, timeAgo: '2 ngày trước' },
+    { id: 8, user: 'Trần Văn H', avatar: 'https://randomuser.me/api/portraits/men/8.jpg', comment: 'Rất cảm động, kịch bản chặt chẽ, diễn viên nhập vai tốt.', movie: 'Mắt Biếc', likes: 67, timeAgo: '3 ngày trước' },
+    { id: 9, user: 'Lê Thị I', avatar: 'https://randomuser.me/api/portraits/women/9.jpg', comment: 'Hay lắm! Nội dung ý nghĩa, hình ảnh đẹp, đáng xem!', movie: 'Gái Già Lắm Chiêu', likes: 94, timeAgo: '3 ngày trước' },
+    { id: 10, user: 'Phạm Văn J', avatar: 'https://randomuser.me/api/portraits/men/10.jpg', comment: 'Đỉnh cao, xứng đáng là phim hay nhất năm!', movie: 'Trạng Tí', likes: 78, timeAgo: '4 ngày trước' },
+    { id: 11, user: 'Hoàng Thị K', avatar: 'https://randomuser.me/api/portraits/women/11.jpg', comment: 'Xuất sắc từ diễn xuất đến kịch bản, rất đáng xem!', movie: 'Bí Mật Của Gió', likes: 101, timeAgo: '4 ngày trước' },
+    { id: 12, user: 'Vũ Văn L', avatar: 'https://randomuser.me/api/portraits/men/12.jpg', comment: 'Quá tuyệt, không thể chê vào đâu được!', movie: 'Lật Mặt', likes: 85, timeAgo: '5 ngày trước' }
   ],
   trending: [
     { id: 1, title: 'Bố Già', views: '1.2M', rating: 9.2 },
@@ -135,10 +135,10 @@ const LeaderboardDashboard = () => {
             {canGoBack && (
               <button
                 onClick={prevSlide}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 -translate-x-2 sm:-translate-x-3 md:-translate-x-4 bg-gradient-to-r from-black/40 to-transparent pr-1 sm:pr-2 md:pr-3 flex items-center justify-start rounded-r-lg transition-all duration-200 ease-out hover:from-black/60 active:scale-95"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 -translate-x-2 sm:-translate-x-3 md:-translate-x-4 bg-gradient-to-r pr-1 sm:pr-2 md:pr-3 flex items-center justify-start rounded-r-lg transition-all duration-200 ease-out active:scale-95"
                 aria-label="Previous comments"
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
                   <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-900" />
                 </div>
               </button>
@@ -146,7 +146,7 @@ const LeaderboardDashboard = () => {
 
             {/* Comments Grid */}
             <div 
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -154,12 +154,38 @@ const LeaderboardDashboard = () => {
               {visibleComments.map((comment) => (
                 <div
                   key={comment.id}
-                  className="bg-gray-800 rounded-lg aspect-[4/3] hover:bg-gray-750 transition-colors cursor-pointer"
+                  className="bg-gray-800 rounded-xl hover:bg-gray-750 transition-colors cursor-pointer h-full flex flex-col"
                 >
-                  <div className="h-full flex flex-col p-2">
-                    <div className="text-xs text-gray-400 mb-1 truncate">{comment.user}</div>
-                    <div className="text-xs flex-1 line-clamp-2">{comment.comment}</div>
-                    <div className="text-xs text-gray-500 mt-1 truncate">{comment.movie}</div>
+                  <div className="flex items-center p-3 border-b border-gray-700">
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden mr-2">
+                      <img 
+                        src={comment.avatar} 
+                        alt={comment.user}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(comment.user) + '&background=4b5563&color=fff';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-medium text-white truncate">{comment.user}</h4>
+                      <p className="text-[10px] text-gray-400">{comment.timeAgo}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 flex-1">
+                    <p className="text-xs text-gray-200 line-clamp-3 mb-3">{comment.comment}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-400 font-medium">{comment.movie}</span>
+                      <div className="flex items-center text-xs text-gray-400">
+                        <span className="w-5 h-5 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        </span>
+                        <span className="ml-1">{comment.likes}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -169,10 +195,10 @@ const LeaderboardDashboard = () => {
             {canGoNext && (
               <button
                 onClick={nextSlide}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 translate-x-2 sm:translate-x-3 md:translate-x-4 bg-gradient-to-l from-black/40 to-transparent pl-1 sm:pl-2 md:pl-3 flex items-center justify-end rounded-l-lg transition-all duration-200 ease-out hover:from-black/60 active:scale-95"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 translate-x-2 sm:translate-x-3 md:translate-x-4 bg-gradient-to-l pl-1 sm:pl-2 md:pl-3 flex items-center justify-end rounded-l-lg transition-all duration-200 ease-out active:scale-95"
                 aria-label="Next comments"
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
                   <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-900" />
                 </div>
               </button>
