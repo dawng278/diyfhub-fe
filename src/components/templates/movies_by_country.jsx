@@ -176,7 +176,7 @@ function MoviesByCountry() {
                     {canGoBack && (
                       <button
                         onClick={() => handlePrev(country.slug)}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 -translate-x-2 sm:-translate-x-3 md:-translate-x-4 bg-gradient-to-r pr-1 sm:pr-2 md:pr-3 flex items-center justify-start rounded-r-lg transition-all duration-200 ease-out active:scale-95"
+                        className="absolute left-0 top-[40%] -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 -translate-x-2 sm:-translate-x-3 md:-translate-x-4 bg-gradient-to-r pr-1 sm:pr-2 md:pr-3 flex items-center justify-start rounded-r-lg transition-all duration-200 ease-out active:scale-95"
                         aria-label="Previous movies"
                       >
                         <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
@@ -245,7 +245,7 @@ function MoviesByCountry() {
                     {canGoNext && (
                       <button
                         onClick={() => handleNext(country.slug)}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 translate-x-2 sm:translate-x-3 md:translate-x-4 bg-gradient-to-l pl-1 sm:pl-2 md:pl-3 flex items-center justify-end rounded-l-lg transition-all duration-200 ease-out active:scale-95"
+                        className="absolute right-0 top-[40%] -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 translate-x-2 sm:translate-x-3 md:translate-x-4 bg-gradient-to-l pl-1 sm:pl-2 md:pl-3 flex items-center justify-end rounded-l-lg transition-all duration-200 ease-out active:scale-95"
                         aria-label="Next movies"
                       >
                         <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white hover:bg-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110">
