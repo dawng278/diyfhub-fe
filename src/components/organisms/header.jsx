@@ -3,6 +3,7 @@ import logo from '../../assets/logo.svg'
 import searchNormal from '../../assets/search-normal.svg'
 import arrowDown from '../../assets/arrow-down.svg'
 import user from '../../assets/user.svg'
+import { getCategories, getCountries } from '../../services/apiService';
 
 // --- Icons cho menu Mobile (Hamburger và Close) ---
 const MenuIcon = () => (
@@ -21,6 +22,16 @@ const CloseIcon = () => (
 function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const [isMobile, setIsMobile] = useState(false);
+    const [genres, setGenres] = useState([]);
+    const [countries, setCountries] = useState([]);
+    const [moreItems] = useState([
+        { id: 1, name: 'Phim mới cập nhật', slug: 'phim-moi' },
+        { id: 2, name: 'Phim lẻ mới', slug: 'phim-le' },
+        { id: 3, name: 'Phim bộ mới', slug: 'phim-bo' },
+        { id: 4, name: 'Phim chiếu rạp', slug: 'phim-chieu-rap' },
+    ]);
 
     // 1. (Từ bản "chuẩn") Tự động khóa scroll của trang khi menu mobile mở
     useEffect(() => {
@@ -48,12 +59,110 @@ function Navbar() {
     }, [isScrolled]);
 
     const navigationItems = [
-        { label: "Phim lẻ", hasDropdown: false },
-        { label: "Phim bộ", hasDropdown: false },
-        { label: "Thể loại", hasDropdown: true },
-        { label: "Quốc gia", hasDropdown: true },
-        { label: "Thêm", hasDropdown: true },
+        { label: "Phim lẻ", hasDropdown: false, path: "/phim-le" },
+        { label: "Phim bộ", hasDropdown: false, path: "/phim-bo" },
+        { label: "Thể loại", hasDropdown: true, items: genres, type: 'genre' },
+        { label: "Quốc gia", hasDropdown: true, items: countries, type: 'country' },
+        { label: "Thêm", hasDropdown: true, items: moreItems, type: 'more' },
     ];
+
+    // Check if mobile/tablet
+    useEffect(() => {
+        const checkIfMobile = () => {
+            setIsMobile(window.innerWidth < 1024); // lg breakpoint
+        };
+        
+        checkIfMobile();
+        window.addEventListener('resize', checkIfMobile);
+        
+        return () => window.removeEventListener('resize', checkIfMobile);
+    }, []);
+
+    // Close dropdown when clicking outside or on the same button
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            const isDropdownButton = event.target.closest('button[aria-expanded]');
+            const isInsideDropdown = event.target.closest('.dropdown-container') || 
+                                  event.target.closest('[id^="mobile-dropdown-"]');
+            
+            if (activeDropdown && !isInsideDropdown && !isDropdownButton) {
+                setActiveDropdown(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        document.addEventListener('click', handleClickOutside);
+        
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [activeDropdown]);
+
+    // Fetch genres and countries from API
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                console.log('Fetching categories...');
+                const genresResponse = await getCategories();
+                console.log('Categories response:', genresResponse);
+                
+                if (genresResponse && genresResponse.data) {
+                    // Handle case where data might be in different format
+                    const categoriesData = Array.isArray(genresResponse.data) 
+                        ? genresResponse.data 
+                        : (genresResponse.data.data || []);
+                    
+                    const formattedGenres = categoriesData.map(genre => ({
+                        id: genre._id || genre.id,
+                        name: genre.name,
+                        slug: genre.slug || genre.name.toLowerCase().replace(/\s+/g, '-')
+                    }));
+                    
+                    console.log('Formatted genres:', formattedGenres);
+                    setGenres(formattedGenres);
+                }
+
+                console.log('Fetching countries...');
+                const countriesResponse = await getCountries();
+                console.log('Countries response:', countriesResponse);
+                
+                if (countriesResponse && countriesResponse.data) {
+                    // Handle case where data might be in different format
+                    const countriesData = Array.isArray(countriesResponse.data)
+                        ? countriesResponse.data
+                        : (countriesResponse.data.data || []);
+                    
+                    const formattedCountries = countriesData.map(country => ({
+                        id: country._id || country.id,
+                        name: country.name,
+                        slug: country.slug || country.name.toLowerCase().replace(/\s+/g, '-')
+                    }));
+                    
+                    console.log('Formatted countries:', formattedCountries);
+                    setCountries(formattedCountries);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                // Set empty arrays on error
+                setGenres([]);
+                setCountries([]);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const toggleDropdown = (label, event) => {
+        // Prevent default only for mobile to avoid closing the menu immediately
+        if (isMobile) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        setActiveDropdown(activeDropdown === label ? null : label);
+    };
 
     return (
         // 2. (Gộp) Header dính (sticky) VÀ trong suốt (bg-transparent)
@@ -119,20 +228,60 @@ function Navbar() {
                             <div key={item.label} className="flex-shrink-0">
                                 {!item.hasDropdown ? (
                                     <a
-                                        href={`/${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                                        href={item.path}
                                         className="flex items-center [font-family:'Inter-Regular',Helvetica] font-normal text-white text-xs hover:opacity-80 transition-opacity"
                                     >
                                         {item.label}
                                     </a>
                                 ) : (
-                                    <button
-                                        className="flex items-center gap-1.5 text-left [font-family:'Inter-Regular',Helvetica] font-normal text-white text-xs hover:opacity-80 transition-opacity"
-                                        aria-haspopup="true"
-                                        aria-expanded="false"
-                                    >
-                                        <span>{item.label}</span>
-                                        <img className="w-auto h-1.5" alt="" src={arrowDown} aria-hidden="true" />
-                                    </button>
+                                    <div className="relative group">
+                                        <button
+                                            onClick={() => toggleDropdown(item.label)}
+                                            className="flex items-center gap-1.5 text-left [font-family:'Inter-Regular',Helvetica] font-normal text-white text-xs hover:opacity-80 transition-opacity"
+                                            aria-haspopup="true"
+                                            aria-expanded={activeDropdown === item.label}
+                                        >
+                                            <span>{item.label}</span>
+                                            <img 
+                                                className={`w-auto h-1.5 transition-transform ${activeDropdown === item.label ? 'rotate-180' : ''}`} 
+                                                alt="" 
+                                                src={arrowDown} 
+                                                aria-hidden="true" 
+                                            />
+                                        </button>
+                                        {activeDropdown === item.label && (
+                                            <div className={`dropdown-container absolute left-0 mt-2 w-full lg:w-auto lg:min-w-[300px] bg-[#1a1a1a] rounded shadow-lg p-3 z-50 ${isMobile ? 'fixed inset-x-4 top-1/2 -translate-y-1/2 max-h-[80vh] overflow-y-auto' : ''}`}>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {item.items && item.items.length > 0 ? (
+                                                        item.items.map((subItem) => (
+                                                            <a
+                                                                key={subItem.id}
+                                                                href={`/${item.type}/${subItem.slug}`}
+                                                                className="px-3 py-2 text-sm text-white hover:bg-[#333] rounded transition-colors whitespace-normal break-words"
+                                                                title={subItem.name}
+                                                                onClick={() => setActiveDropdown(null)}
+                                                            >
+                                                                {subItem.name}
+                                                            </a>
+                                                        ))
+                                                    ) : (
+                                                        <div className="col-span-2 px-3 py-2 text-sm text-gray-400">Đang tải...</div>
+                                                    )}
+                                                </div>
+                                                {isMobile && (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveDropdown(null);
+                                                        }}
+                                                        className="w-full mt-4 p-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                                    >
+                                                        Đóng
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         ))}
@@ -158,9 +307,6 @@ function Navbar() {
                 {/* ======================================= */}
                 {/* === GIAO DIỆN MOBILE (Base) === */}
                 {/* ======================================= */}
-                {/* 7. (Từ bản "chuẩn") Chỉ hiện trên mobile (flex), ẩn trên desktop (lg:hidden) */}
-
-                {/* Logo (Mobile) */}
                 <div className="flex-1 lg:hidden">
                     <a href="/" aria-label="DiYfHub - Trang chủ" className="block w-[120px] h-[35px] relative">
                         <img
@@ -175,12 +321,19 @@ function Navbar() {
                 </div>
 
                 {/* Nút Hamburger (Mobile) */}
-                <div className="lg:hidden text-white">
+                <div className="lg:hidden flex items-center gap-4">
+                    <button 
+                        className="text-white p-2"
+                        aria-label="Tìm kiếm"
+                    >
+                        <img src={searchNormal} alt="Tìm kiếm" className="w-5 h-5" />
+                    </button>
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         aria-label="Mở menu"
                         aria-expanded={isMobileMenuOpen}
                         aria-controls="mobile-menu"
+                        className="text-white p-2"
                     >
                         {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
                     </button>
@@ -216,13 +369,72 @@ function Navbar() {
                 {/* Navigation (Mobile) */}
                 <nav className="flex flex-col space-y-2 mb-5" aria-label="Điều hướng di động">
                     {navigationItems.map((item) => (
-                        <a
-                            key={item.label}
-                            href={`/${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                            className="text-white text-base [font-family:'Inter-Regular',Helvetica] hover:opacity-80 py-3"
-                        >
-                            {item.label}
-                        </a>
+                        <div key={item.label} className="w-full">
+                            {!item.hasDropdown ? (
+                                <a
+                                    href={item.path}
+                                    className="block text-white text-base [font-family:'Inter-Regular',Helvetica] hover:opacity-80 py-3 px-2"
+                                >
+                                    {item.label}
+                                </a>
+                            ) : (
+                                <div className="w-full">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (activeDropdown === item.label) {
+                                                setActiveDropdown(null);
+                                            } else {
+                                                setActiveDropdown(item.label);
+                                            }
+                                        }}
+                                        className={`w-full flex items-center justify-between text-base [font-family:'Inter-Regular',Helvetica] py-3 px-4 rounded-md transition-colors ${
+                                            activeDropdown === item.label 
+                                                ? 'bg-[#ea2121] text-white font-medium' 
+                                                : 'text-white hover:bg-[#2a2a2a] hover:text-white'
+                                        }`}
+                                        aria-expanded={activeDropdown === item.label}
+                                        aria-controls={`mobile-dropdown-${item.label}`}
+                                    >
+                                        <span>{item.label}</span>
+                                        <img 
+                                            className={`w-3 h-3 transition-transform ${activeDropdown === item.label ? 'rotate-180' : ''}`} 
+                                            alt="" 
+                                            src={arrowDown} 
+                                            aria-hidden="true" 
+                                        />
+                                    </button>
+                                    {activeDropdown === item.label && (
+                                        <div 
+                                            id={`mobile-dropdown-${item.label}`}
+                                            className="pl-4 mt-1 mb-2 border-l-2 border-[#ea2121] bg-[#1a1a1a] rounded-r-md py-2"
+                                        >
+                                            {item.items && item.items.length > 0 ? (
+                                                <div className="grid grid-cols-2 gap-2 py-2">
+                                                    {item.items.map((subItem) => (
+                                                        <a
+                                                            key={subItem.id}
+                                                            href={`/${item.type}/${subItem.slug}`}
+                                                            className="px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#2a2a2a] rounded-md transition-colors whitespace-normal break-all"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setActiveDropdown(null);
+                                                                setIsMobileMenuOpen(false);
+                                                            }}
+                                                        >
+                                                            {subItem.name}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="px-3 py-2 text-sm text-gray-400">Đang tải...</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </nav>
 
