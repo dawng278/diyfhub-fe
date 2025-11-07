@@ -102,7 +102,7 @@ function Navbar() {
                                 {!item.hasDropdown ? (
                                     <a
                                         href={`/${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                                        className="[font-family:'Inter-Regular',Helvetica] font-normal text-white text-xs hover:opacity-80 transition-opacity"
+                                        className="flex items-center [font-family:'Inter-Regular',Helvetica] font-normal text-white text-xs hover:opacity-80 transition-opacity"
                                     >
                                         {item.label}
                                     </a>

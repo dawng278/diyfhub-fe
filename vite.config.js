@@ -7,4 +7,12 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   // Đăng ký plugin Tailwind cũ vào mảng plugins
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001', // Cần cho local dev
+        changeOrigin: true,
+      }
+    }
+  }
 })
