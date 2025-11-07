@@ -15,14 +15,9 @@ function MoviesByCountry() {
     'trung-quoc': 0,
     'au-my': 0
   })
+  const [touchStart, setTouchStart] = useState({})
+  const [touchEnd, setTouchEnd] = useState({})
 
-  const [touchStart, setTouchStart] = useState(null)
-  const [touchEnd, setTouchEnd] = useState(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStartX, setDragStartX] = useState(0)
-  const [scrollLeft, setScrollLeft] = useState(0)
-
-  // Minimum swipe distance to trigger navigation (in pixels)
   const minSwipeDistance = 50
 
   const countries = [
@@ -31,7 +26,32 @@ function MoviesByCountry() {
     { slug: 'au-my', name: 'Phim US-UK mới', gradient: 'bg-gradient-to-r from-pink-400 to-red-400' }
   ]
 
-  const ITEMS_PER_PAGE = 5
+  // Responsive items per page
+  const getItemsPerPage = () => {
+    if (typeof window === 'undefined') return 5
+    const width = window.innerWidth
+    if (width < 640) return 2 // mobile
+    if (width < 768) return 3 // tablet
+    if (width < 1024) return 4 // small laptop
+    return 5 // desktop
+  }
+
+  const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage())
+
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPage(getItemsPerPage())
+      // Reset indexes on resize to prevent out of bounds
+      setCurrentIndexes({
+        'han-quoc': 0,
+        'trung-quoc': 0,
+        'au-my': 0
+      })
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     const fetchMovies = async () => {
@@ -42,13 +62,10 @@ function MoviesByCountry() {
         
         const responses = await Promise.all(promises)
         
-        console.log('Movies by country responses:', responses)
-        
         const moviesData = {}
         responses.forEach((response, index) => {
           const slug = countries[index].slug
           const items = response.data.data?.items || response.data.items || []
-          console.log(`${slug} movies:`, items)
           moviesData[slug] = items
         })
         
@@ -68,7 +85,7 @@ function MoviesByCountry() {
       ...prev,
       [countrySlug]: Math.min(
         prev[countrySlug] + 1,
-        moviesByCountry[countrySlug]?.length - ITEMS_PER_PAGE
+        moviesByCountry[countrySlug]?.length - itemsPerPage
       )
     }))
   }
@@ -80,26 +97,24 @@ function MoviesByCountry() {
     }))
   }
 
-  // Touch event handlers for swipe
-  const handleTouchStart = (e) => {
-    setTouchStart(e.targetTouches[0].clientX)
-    setDragStartX(e.targetTouches[0].clientX)
-    setScrollLeft(e.currentTarget.scrollLeft)
-    setIsDragging(true)
+  const handleTouchStart = (e, countrySlug) => {
+    setTouchStart(prev => ({
+      ...prev,
+      [countrySlug]: e.targetTouches[0].clientX
+    }))
   }
 
-  const handleTouchMove = (e) => {
-    if (!isDragging) return
-    
-    const touchX = e.targetTouches[0].clientX
-    const walk = (touchX - dragStartX) * 2 // Multiply for better feel
-    e.currentTarget.scrollLeft = scrollLeft - walk
+  const handleTouchMove = (e, countrySlug) => {
+    setTouchEnd(prev => ({
+      ...prev,
+      [countrySlug]: e.targetTouches[0].clientX
+    }))
   }
 
-  const handleTouchEnd = (e, countrySlug) => {
-    if (!touchStart || !touchEnd) return
+  const handleTouchEnd = (countrySlug) => {
+    if (!touchStart[countrySlug] || !touchEnd[countrySlug]) return
     
-    const distance = touchStart - touchEnd
+    const distance = touchStart[countrySlug] - touchEnd[countrySlug]
     const isLeftSwipe = distance > minSwipeDistance
     const isRightSwipe = distance < -minSwipeDistance
     
@@ -109,10 +124,8 @@ function MoviesByCountry() {
       handlePrev(countrySlug)
     }
     
-    // Reset states
-    setTouchStart(null)
-    setTouchEnd(null)
-    setIsDragging(false)
+    setTouchStart(prev => ({ ...prev, [countrySlug]: null }))
+    setTouchEnd(prev => ({ ...prev, [countrySlug]: null }))
   }
 
   if (loading) {
@@ -128,22 +141,20 @@ function MoviesByCountry() {
   return (
     <section className="py-8 sm:py-10 md:py-12 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 bg-gray-950">
       <div className="mx-auto relative rounded-lg md:rounded-2xl overflow-hidden">
-        {/* Gradient Background - Chung cho cả 3 bảng */}
         <div className="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-850/10 to-gray-950 pointer-events-none" />
         
         <div className="relative p-4 sm:p-5 md:p-6 lg:p-8 space-y-6 md:space-y-8">
           {countries.map((country) => {
             const movies = moviesByCountry[country.slug]
             const currentIndex = currentIndexes[country.slug]
-            const visibleMovies = movies.slice(currentIndex, currentIndex + ITEMS_PER_PAGE)
+            const visibleMovies = movies.slice(currentIndex, currentIndex + itemsPerPage)
             const canGoBack = currentIndex > 0
-            const canGoNext = currentIndex < movies.length - ITEMS_PER_PAGE
+            const canGoNext = currentIndex < movies.length - itemsPerPage
 
             return (
               <div key={country.slug} className="relative">
-                {/* Header and Movies in same row */}
                 <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 md:gap-6">
-                  {/* Left Section: Title */}
+                  {/* Title Section */}
                   <div className="w-full sm:w-auto sm:shrink-0 sm:w-32 md:w-36 lg:w-44 pt-0 sm:pt-1">
                     <h2 className={`${country.gradient} bg-clip-text text-transparent text-xl sm:text-2xl md:text-3xl font-bold sm:font-extrabold mb-1 sm:mb-1.5 leading-tight`}>
                       {country.name}
@@ -161,37 +172,31 @@ function MoviesByCountry() {
 
                   {/* Movies Carousel */}
                   <div className="flex-1 relative min-w-0">
-                    {/* Left Arrow - Only show on desktop and when scrolled */}
+                    {/* Left Arrow */}
                     {canGoBack && (
                       <button
                         onClick={() => handlePrev(country.slug)}
-                        className="hidden md:flex absolute left-0 top-[40%] -translate-y-1/2 -translate-x-3 z-10 w-10 h-10 bg-white rounded-full items-center justify-center transition-all shadow-lg hover:scale-110"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 -translate-x-2 sm:-translate-x-3 md:-translate-x-4 bg-gradient-to-r from-black/40 to-transparent pr-1 sm:pr-2 md:pr-3 flex items-center justify-start rounded-r-lg transition-all duration-200 ease-out hover:from-black/60 active:scale-95"
                         aria-label="Previous movies"
                       >
-                        <img src={arrowCircleLeft} alt="" className="w-6 h-6" />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
+                          <img 
+                            src={arrowCircleLeft} 
+                            alt="" 
+                            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" 
+                          />
+                        </div>
                       </button>
                     )}
 
                     {/* Movies Grid */}
                     <div 
-                      className="flex justify-between gap-2 overflow-x-auto transition-all duration-300 ease-in-out"
-                      onTouchStart={handleTouchStart}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={(e) => handleTouchEnd(e, country.slug)}
-                      style={{
-                        WebkitOverflowScrolling: 'touch',
-                        scrollbarWidth: 'none', /* Firefox */
-                        msOverflowStyle: 'none', /* IE and Edge */
-                      }}
+                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4"
+                      onTouchStart={(e) => handleTouchStart(e, country.slug)}
+                      onTouchMove={(e) => handleTouchMove(e, country.slug)}
+                      onTouchEnd={() => handleTouchEnd(country.slug)}
                     >
-                      {/* Inline style for WebKit browsers */}
-                      <style jsx>{`
-                        div::-webkit-scrollbar {
-                          display: none; /* Chrome, Safari, Opera */
-                        }
-                      `}</style>
                       {visibleMovies.map((movie, index) => {
-                        // Use thumb_url (banner) instead of poster_url
                         let posterUrl = movie.thumb_url || movie.poster_url || movie.image || (movie.poster && movie.poster.url)
                         
                         if (posterUrl && !posterUrl.startsWith('http')) {
@@ -203,9 +208,9 @@ function MoviesByCountry() {
                         }
                         
                         return (
-                          <div key={movie.slug || index} className="group cursor-pointer shrink-0">
-                            {/* Movie Poster - Landscape */}
-                            <div className="relative w-28 xs:w-32 sm:w-36 md:w-44 lg:w-52 xl:w-72 aspect-[3/2] rounded-lg overflow-hidden bg-gray-900 mb-2 shadow-lg">
+                          <div key={movie.slug || index} className="group cursor-pointer">
+                            {/* Movie Poster */}
+                            <div className="relative w-full aspect-[3/2] rounded-lg overflow-hidden bg-gray-900 mb-2 shadow-lg">
                               <img
                                 src={posterUrl}
                                 alt={movie.name || 'Movie poster'}
@@ -218,12 +223,12 @@ function MoviesByCountry() {
                               />
                               {/* Overlay on hover */}
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                <span className="text-white text-xs font-semibold">Xem ngay</span>
+                                <span className="text-white text-xs sm:text-sm font-semibold">Xem ngay</span>
                               </div>
                             </div>
                             
                             {/* Movie Title */}
-                            <div className="space-y-0.5 sm:space-y-1 w-28 xs:w-32 sm:w-36 md:w-44 lg:w-52 xl:w-72">
+                            <div className="space-y-0.5 sm:space-y-1">
                               <h3 className="text-white text-xs sm:text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors duration-200">
                                 {movie.name}
                               </h3>
@@ -236,14 +241,20 @@ function MoviesByCountry() {
                       })}
                     </div>
 
-                    {/* Right Arrow - Only show on desktop when more movies available */}
+                    {/* Right Arrow */}
                     {canGoNext && (
                       <button
                         onClick={() => handleNext(country.slug)}
-                        className="hidden md:flex absolute right-0 top-[40%] -translate-y-1/2 translate-x-3 z-10 w-10 h-10 bg-white rounded-full items-center justify-center transition-all shadow-lg hover:scale-110"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-12 sm:w-10 sm:h-16 md:w-12 md:h-20 translate-x-2 sm:translate-x-3 md:translate-x-4 bg-gradient-to-l from-black/40 to-transparent pl-1 sm:pl-2 md:pl-3 flex items-center justify-end rounded-l-lg transition-all duration-200 ease-out hover:from-black/60 active:scale-95"
                         aria-label="Next movies"
                       >
-                        <img src={arrowCircleRight} alt="" className="w-6 h-6" />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
+                          <img 
+                            src={arrowCircleRight} 
+                            alt="" 
+                            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" 
+                          />
+                        </div>
                       </button>
                     )}
                   </div>
