@@ -2,13 +2,12 @@ import axios from 'axios';
 
 // Base URL configuration
 const getBaseUrl = () => {
-  // Check if we're in production (Vercel)
+  // Use Render backend URL in production
   if (import.meta.env.PROD) {
-    // In production, use the production API URL
-    return import.meta.env.VITE_API_BASE_URL || 'https://your-production-api.com/api';
+    return 'https://your-render-backend.onrender.com/api'; // Replace with your actual Render URL
   }
-  // In development, use localhost
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+  // Use localhost in development
+  return 'http://localhost:3001/api';
 };
 
 const API_BASE_URL = getBaseUrl();
