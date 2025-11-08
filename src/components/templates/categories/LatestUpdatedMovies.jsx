@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { getNewMovies } from '../../../services/apiService';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
 // Helper function to format duration in minutes to 'Xh Ym' format
@@ -136,26 +136,29 @@ const LatestUpdatedMovies = () => {
                 setError(null);
                 console.log('Fetching latest movies...');
 
-                const response = await axios.get('/api/phim-moi', {
-                    params: {
-                        page: 1,
-                        limit: 24  // Increased from 12 to 24 to show more movies
-                    }
-                });
-
+                // Use the getNewMovies function from apiService
+                const response = await getNewMovies(1);
                 console.log('API Response:', response);
 
                 let moviesData = [];
-                const responseData = response.data;
+                const responseData = response?.data;
 
-                if (responseData?.data?.items) {
-                    moviesData = responseData.data.items;
-                } else if (responseData?.items) {
-                    moviesData = responseData.items;
-                } else if (responseData?.data && Array.isArray(responseData.data)) {
-                    moviesData = responseData.data;
-                } else if (Array.isArray(responseData)) {
+                // Handle different response structures
+                if (Array.isArray(responseData)) {
+                    // Case 1: Response data is already an array
                     moviesData = responseData;
+                } else if (responseData?.data) {
+                    // Case 2: Response has a data property that might be an array or contain an array
+                    if (Array.isArray(responseData.data)) {
+                        moviesData = responseData.data;
+                    } else if (responseData.data.items && Array.isArray(responseData.data.items)) {
+                        moviesData = responseData.data.items;
+                    } else if (responseData.data.data && Array.isArray(responseData.data.data)) {
+                        moviesData = responseData.data.data;
+                    }
+                } else if (responseData?.items && Array.isArray(responseData.items)) {
+                    // Case 3: Response has an items array
+                    moviesData = responseData.items;
                 }
 
                 console.log('Extracted movies data:', moviesData);
