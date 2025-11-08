@@ -249,7 +249,7 @@ const LatestUpdatedMovies = () => {
     return (
         <div className="text-white py-8 sm:py-10 md:py-12 w-full">
             <style>{styles}</style>
-            <div className="w-full max-w-full overflow-hidden px-16">
+            <div className="w-full max-w-full overflow-hidden sm:px-8 px-6 md:px-14">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h2 className="text-xl sm:text-2xl font-bold truncate max-w-[70%]">Phim mới cập nhật</h2>
                     <button 
