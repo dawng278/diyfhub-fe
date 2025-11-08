@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { getMoviesByCategory, getMoviesByCountry } from '../../services/apiService';
 import MovieCard from '../molecules/MovieCard';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
@@ -30,34 +30,53 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
       try {
         setLoading(true);
         
-        const response = await axios.get(`/api/${apiPath}/${categoryId}`, {
-          params: { 
-            limit: 20,
-            page: 1
-          }
-        });
-        
-        let moviesData = [];
-        const responseData = response.data;
-        
-        if (responseData?.data?.data) {
-          moviesData = responseData.data.data;
-        } else if (responseData?.data?.items) {
-          moviesData = responseData.data.items;
-        } else if (responseData?.data) {
-          moviesData = Array.isArray(responseData.data) ? responseData.data : [];
-        } else if (Array.isArray(responseData)) {
-          moviesData = responseData;
+        // Use the appropriate API function based on the apiPath
+        let response;
+        if (apiPath === 'the-loai') {
+          response = await getMoviesByCategory(categoryId, { limit: 20, page: 1 });
+        } else if (apiPath === 'quoc-gia') {
+          response = await getMoviesByCountry(categoryId, { limit: 20, page: 1 });
+        } else {
+          // Default to category if path is not recognized
+          response = await getMoviesByCategory(categoryId, { limit: 20, page: 1 });
         }
         
-        // Debug log to see the structure of the first movie
-        console.log('First movie data:', moviesData[0]);
+        console.log('API Response:', response); // Debug log
         
-        setMovies(moviesData || []);
+        // Handle different response structures
+        let moviesData = [];
+        const responseData = response?.data;
+        
+        if (Array.isArray(responseData)) {
+          // Case 1: Response data is already an array
+          moviesData = responseData;
+        } else if (responseData?.data && Array.isArray(responseData.data)) {
+          // Case 2: Response has a data property that's an array
+          moviesData = responseData.data;
+        } else if (responseData?.items && Array.isArray(responseData.items)) {
+          // Case 3: Response has an items array
+          moviesData = responseData.items;
+        } else if (responseData?.results && Array.isArray(responseData.results)) {
+          // Case 4: Response has a results array (common in TMDB-like APIs)
+          moviesData = responseData.results;
+        } else if (responseData?.data?.data && Array.isArray(responseData.data.data)) {
+          // Case 5: Nested data structure
+          moviesData = responseData.data.data;
+        } else {
+          console.warn('Unexpected API response structure:', responseData);
+        }
+        
+        console.log('Extracted movies:', moviesData); // Debug log
+        
+        if (!Array.isArray(moviesData)) {
+          throw new Error('Invalid data format received from API');
+        }
+        
+        setMovies(moviesData);
         setError(null);
       } catch (err) {
-        console.error(`Error fetching ${categoryName} movies:`, err);
-        setError(`Không thể tải danh sách ${categoryName.toLowerCase()}. Vui lòng thử lại sau.`);
+        setError(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tải dữ liệu');
+        console.error('Error fetching movies:', err);
       } finally {
         setLoading(false);
       }
@@ -134,7 +153,8 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
             ref={scrollContainerRef}
             className="flex space-x-3 sm:space-x-4 pb-2 sm:pb-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory px-1"
           >
-            {movies.map((movie, index) => {
+            {Array.isArray(movies) && movies.length > 0 ? (
+              movies.map((movie, index) => {
               // Get the most appropriate poster path
               const posterPath = 
                 movie.poster_url || 
@@ -173,7 +193,12 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
                   />
                 </div>
               );
-            })}
+            })
+            ) : (
+              <div className="w-full text-center py-8 text-gray-400">
+                Không có phim nào được tìm thấy
+              </div>
+            )}
           </div>
         </div>
       </div>
