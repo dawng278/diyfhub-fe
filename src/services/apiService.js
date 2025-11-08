@@ -1,16 +1,41 @@
 import axios from 'axios';
 
-// Base URL from environment variable or fallback to development URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// Base URL configuration
+const getBaseUrl = () => {
+  // Check if we're in production (Vercel)
+  if (import.meta.env.PROD) {
+    // In production, use the production API URL
+    return import.meta.env.VITE_API_BASE_URL || 'https://your-production-api.com/api';
+  }
+  // In development, use localhost
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getBaseUrl();
+console.log('Using API Base URL:', API_BASE_URL); // Debug log
 
 // Create axios instance with base URL and common headers
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000, // Increased timeout to 15 seconds
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
+  withCredentials: true, // If your API uses cookies/sessions
 });
+
+// Add a request interceptor to log requests
+api.interceptors.request.use(
+  (config) => {
+    console.log(`[${config.method?.toUpperCase()}] ${config.url}`, config.params || '');
+    return config;
+  },
+  (error) => {
+    console.error('Request Error:', error);
+    return Promise.reject(error);
+  }
+);
 
 // Add request interceptor for error handling
 api.interceptors.request.use(
@@ -27,6 +52,8 @@ api.interceptors.request.use(
 // Add response interceptor for error handling and data extraction
 api.interceptors.response.use(
   (response) => {
+    console.log(`[${response.status}] ${response.config.url}`, response.data);
+    
     // Handle successful responses with the {status, msg, data} format
     if (response.data && typeof response.data === 'object') {
       // If the response has a status field, it's using the custom format
@@ -38,16 +65,46 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
         // Return the data part of the response
-        return {
+        const result = {
           ...response,
           data: response.data.data || {}
         };
+        return result;
       }
     }
     return response;
   },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const errorMessage = {
+      message: error.message,
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+    };
+    
+    console.error('API Error:', errorMessage);
+    
+    // Handle specific error statuses
+    if (error.response) {
+      // Server responded with a status code outside 2xx
+      if (error.response.status === 401) {
+        // Handle unauthorized (e.g., redirect to login)
+        console.error('Unauthorized - redirecting to login');
+        // window.location.href = '/login';
+      } else if (error.response.status === 404) {
+        console.error('API endpoint not found:', error.config.url);
+      } else if (error.response.status >= 500) {
+        console.error('Server error:', error.response.status);
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('No response from server. Please check your connection.');
+    } else {
+      // Something happened in setting up the request
+      console.error('Request error:', error.message);
+    }
+    
     return Promise.reject(error);
   }
 );
