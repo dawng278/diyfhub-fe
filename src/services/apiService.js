@@ -1,194 +1,122 @@
+// File: src/services/apiService.js
 import axios from 'axios';
 
-// Base URL configuration
-const getBaseUrl = () => {
-  // Use Render backend URL in production
-  if (import.meta.env.PROD) {
-    return 'https://your-render-backend.onrender.com/api'; // Replace with your actual Render URL
-  }
-  // Use localhost in development
-  return 'http://localhost:3001/api';
+// Lấy URL cơ sở từ biến môi trường
+// - Ở Local: Nó sẽ là '/api' (và Vite Proxy sẽ chuyển nó đến port 3001)
+// - Trên Vercel: Nó sẽ là 'https://diyfhub-be.onrender.com/api' (do bạn cài đặt)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// ==================== PHIM MỚI ====================
+
+// Lấy phim mới cập nhật (V1)
+export const getNewMovies = (page = 1) => {
+    return axios.get(`${API_BASE_URL}/phim-moi`, {
+        params: { page }
+    });
 };
 
-const API_BASE_URL = getBaseUrl();
-console.log('Using API Base URL:', API_BASE_URL); // Debug log
-
-// Create axios instance with base URL and common headers
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 15000, // Increased timeout to 15 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  withCredentials: true, // If your API uses cookies/sessions
-});
-
-// Add a request interceptor to log requests
-api.interceptors.request.use(
-  (config) => {
-    console.log(`[${config.method?.toUpperCase()}] ${config.url}`, config.params || '');
-    return config;
-  },
-  (error) => {
-    console.error('Request Error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// Add request interceptor for error handling
-api.interceptors.request.use(
-  (config) => {
-    // You can add auth tokens here if needed
-    // config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor for error handling and data extraction
-api.interceptors.response.use(
-  (response) => {
-    console.log(`[${response.status}] ${response.config.url}`, response.data);
-    
-    // Handle successful responses with the {status, msg, data} format
-    if (response.data && typeof response.data === 'object') {
-      // If the response has a status field, it's using the custom format
-      if (response.data.status !== undefined) {
-        // If status is false, treat it as an error
-        if (response.data.status === false) {
-          const error = new Error(response.data.msg || 'API request failed');
-          error.response = response;
-          return Promise.reject(error);
-        }
-        // Return the data part of the response
-        const result = {
-          ...response,
-          data: response.data.data || {}
-        };
-        return result;
-      }
-    }
-    return response;
-  },
-  (error) => {
-    const errorMessage = {
-      message: error.message,
-      url: error.config?.url,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data
-    };
-    
-    console.error('API Error:', errorMessage);
-    
-    // Handle specific error statuses
-    if (error.response) {
-      // Server responded with a status code outside 2xx
-      if (error.response.status === 401) {
-        // Handle unauthorized (e.g., redirect to login)
-        console.error('Unauthorized - redirecting to login');
-        // window.location.href = '/login';
-      } else if (error.response.status === 404) {
-        console.error('API endpoint not found:', error.config.url);
-      } else if (error.response.status >= 500) {
-        console.error('Server error:', error.response.status);
-      }
-    } else if (error.request) {
-      // Request was made but no response received
-      console.error('No response from server. Please check your connection.');
-    } else {
-      // Something happened in setting up the request
-      console.error('Request error:', error.message);
-    }
-    
-    return Promise.reject(error);
-  }
-);
-
-// ==================== COMMON ====================
-
-export const categories = [
-  { slug: 'hanh-dong', name: 'Hành Động' },
-  { slug: 'tinh-cam', name: 'Tình Cảm' },
-  { slug: 'hai-huoc', name: 'Hài Hước' },
-  { slug: 'kinh-di', name: 'Kinh Dịch' },
-  { slug: 'hoat-hinh', name: 'Hoạt Hình' },
-  { slug: 'phieu-luu', name: 'Phiêu Lưu' },
-  { slug: 'vien-tuong', name: 'Viễn Tưởng' },
-  { slug: 'co-trang', name: 'Cổ Trang' },
-  { slug: 'than-thoai', name: 'Thần Thoại' },
-  { slug: 'tai-lieu', name: 'Tài Liệu' },
-];
-
-// ==================== MOVIES ====================
-
-export const getNewMovies = (page = 1, limit = 24) => {
-  return api.get('/phim-moi', { params: { page, limit } });
+// Lấy phim mới cập nhật V2
+export const getNewMoviesV2 = (page = 1) => {
+    return axios.get(`${API_BASE_URL}/phim-moi-v2`, {
+        params: { page }
+    });
 };
 
-export const getSingleMovies = (params = {}) => {
-  return api.get('/phim-le', { params });
+// Lấy phim mới cập nhật V3
+export const getNewMoviesV3 = (page = 1) => {
+    return axios.get(`${API_BASE_URL}/phim-moi-v3`, {
+        params: { page }
+    });
 };
 
-export const getSeriesMovies = (params = {}) => {
-  return api.get('/phim-bo', { params });
-};
+// ==================== CHI TIẾT PHIM ====================
 
-export const getMovieList = (type, params = {}) => {
-  return api.get(`/danh-sach/${type}`, { params });
-};
-
-// ==================== MOVIE DETAILS ====================
-
+// Lấy chi tiết phim theo slug (query param)
 export const getMovieDetail = (slug) => {
-  return api.get('/phim', { params: { slug } });
+    return axios.get(`${API_BASE_URL}/phim`, {
+        params: { slug }
+    });
 };
 
+// Lấy chi tiết phim theo slug (path param)
 export const getMovieBySlug = (slug) => {
-  return api.get(`/phim/${slug}`);
+    return axios.get(`${API_BASE_URL}/phim/${slug}`);
 };
 
+// Lấy thông tin phim theo TMDB ID
+// type: 'tv' hoặc 'movie'
 export const getMovieByTMDB = (type, id) => {
-  return api.get(`/tmdb/${type}/${id}`);
+    return axios.get(`${API_BASE_URL}/tmdb/${type}/${id}`);
 };
 
-// ==================== CATEGORIES ====================
+// ==================== DANH SÁCH TỔNG HỢP ====================
 
-export const getCategories = () => {
-  return api.get('/the-loai');
+// Lấy danh sách phim theo loại
+// type: 'phim-bo', 'phim-le', 'tv-shows', 'hoat-hinh', 'phim-vietsub', 'phim-thuyet-minh', 'phim-long-tieng'
+// params: { page, sort_field, sort_type, sort_lang, category, country, year, limit }
+export const getMovieList = (type, params = {}) => {
+    return axios.get(`${API_BASE_URL}/danh-sach/${type}`, {
+        params
+    });
 };
 
-export const getMoviesByCategory = (slug, params = {}) => {
-  return api.get(`/the-loai/${slug}`, { params });
-};
+// ==================== TÌM KIẾM ====================
 
-// ==================== COUNTRIES ====================
-
-export const getCountries = () => {
-  return api.get('/quoc-gia');
-};
-
-export const getMoviesByCountry = (slug, params = {}) => {
-  return api.get(`/quoc-gia/${slug}`, { params });
-};
-
-// ==================== YEARS ====================
-
-export const getMoviesByYear = (year, params = {}) => {
-  return api.get(`/nam/${year}`, { params });
-};
-
-// ==================== SEARCH ====================
-
+// Tìm kiếm phim
+// params: { keyword, page, sort_field, sort_type, sort_lang, category, country, year, limit }
 export const searchMovie = (params = {}) => {
-  return api.get('/tim-kiem', { params });
+    return axios.get(`${API_BASE_URL}/tim-kiem`, {
+        params
+    });
 };
 
-// ==================== UTILS ====================
+// ==================== THỂ LOẠI ====================
 
+// Lấy danh sách thể loại
+export const getCategories = () => {
+    return axios.get(`${API_BASE_URL}/the-loai`);
+};
+
+// Lấy phim theo thể loại
+// slug: slug của thể loại (vd: 'hanh-dong')
+// params: { page, sort_field, sort_type, sort_lang, country, year, limit }
+export const getMoviesByCategory = (slug, params = {}) => {
+    return axios.get(`${API_BASE_URL}/the-loai/${slug}`, {
+        params
+    });
+};
+
+// ==================== QUỐC GIA ====================
+
+// Lấy danh sách quốc gia
+export const getCountries = () => {
+    return axios.get(`${API_BASE_URL}/quoc-gia`);
+};
+
+// Lấy phim theo quốc gia
+// slug: slug của quốc gia (vd: 'trung-quoc')
+// params: { page, sort_field, sort_type, sort_lang, category, year, limit }
+export const getMoviesByCountry = (slug, params = {}) => {
+    return axios.get(`${API_BASE_URL}/quoc-gia/${slug}`, {
+        params
+    });
+};
+
+// ==================== NĂM ====================
+
+// Lấy phim theo năm
+// year: năm phát hành (vd: 2024)
+// params: { page, sort_field, sort_type, sort_lang, category, country, limit }
+export const getMoviesByYear = (year, params = {}) => {
+    return axios.get(`${API_BASE_URL}/nam/${year}`, {
+        params
+    });
+};
+
+// ==================== CHUYỂN ĐỔI ẢNH ====================
+
+// Chuyển đổi ảnh sang WEBP
+// url: URL ảnh gốc từ PhimAPI
 export const convertImageToWebP = (url) => {
-  return `${API_BASE_URL}/image?url=${encodeURIComponent(url)}`;
+    return `${API_BASE_URL}/image?url=${encodeURIComponent(url)}`;
 };

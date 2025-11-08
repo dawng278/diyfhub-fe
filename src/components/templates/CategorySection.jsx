@@ -43,25 +43,35 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
         
         console.log('API Response:', response); // Debug log
         
-        // Handle different response structures
+        // Handle the API response structure
         let moviesData = [];
         const responseData = response?.data;
         
+        // Log the full response for debugging
+        console.log('Full API response:', response);
+        
+        // Handle different response structures
         if (Array.isArray(responseData)) {
           // Case 1: Response data is already an array
           moviesData = responseData;
-        } else if (responseData?.data && Array.isArray(responseData.data)) {
-          // Case 2: Response has a data property that's an array
-          moviesData = responseData.data;
+        } else if (responseData?.data) {
+          // Case 2: Response has a data property that might be an array or contain an array
+          if (Array.isArray(responseData.data)) {
+            moviesData = responseData.data;
+          } else if (responseData.data.data && Array.isArray(responseData.data.data)) {
+            // Nested data structure
+            moviesData = responseData.data.data;
+          } else if (responseData.data.items && Array.isArray(responseData.data.items)) {
+            moviesData = responseData.data.items;
+          } else if (responseData.data.results && Array.isArray(responseData.data.results)) {
+            moviesData = responseData.data.results;
+          }
         } else if (responseData?.items && Array.isArray(responseData.items)) {
           // Case 3: Response has an items array
           moviesData = responseData.items;
         } else if (responseData?.results && Array.isArray(responseData.results)) {
           // Case 4: Response has a results array (common in TMDB-like APIs)
           moviesData = responseData.results;
-        } else if (responseData?.data?.data && Array.isArray(responseData.data.data)) {
-          // Case 5: Nested data structure
-          moviesData = responseData.data.data;
         } else {
           console.warn('Unexpected API response structure:', responseData);
         }
