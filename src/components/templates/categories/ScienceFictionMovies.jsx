@@ -4,7 +4,7 @@ import CategorySection from '../CategorySection';
 const ScienceFictionMovies = () => {
   return (
     <CategorySection 
-      categoryId="khoa-hoc-vien-tuong"
+      categoryId="khoa-hoc"
       categoryName="Phim Khoa Học Viễn Tưởng"
     />
   );

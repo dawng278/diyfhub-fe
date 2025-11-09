@@ -4,8 +4,8 @@ import CategorySection from '../CategorySection';
 const PoliticalDramaMovies = () => {
   return (
     <CategorySection 
-      categoryId="dien-anh"
-      categoryName="Phim Điện ảnh"
+      categoryId="chinh-kich"
+      categoryName="Phim Chính Kịch"
     />
   );
 };
