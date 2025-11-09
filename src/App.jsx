@@ -19,6 +19,7 @@ import ClassicMovies from './components/templates/categories/ClassicMovies';
 import CrimeMovies from './components/templates/categories/CrimeMovies';
 import DocumentaryMovies from './components/templates/categories/DocumentaryMovies';
 import LatestUpdatedMovies from './components/templates/categories/LatestUpdatedMovies';
+import AnimeMovies from './components/templates/categories/AnimeMovies';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
                 <AdultMovies />
                 <LatestUpdatedMovies />
                 <WesternMovies />
+                <AnimeMovies />
                 <WarMovies />
                 <SportsMovies />
                 <RomanceMovies />
