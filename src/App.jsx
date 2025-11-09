@@ -1,4 +1,6 @@
 import React, { lazy, Suspense, useRef, useEffect, useState } from 'react';
+import axios from 'axios';
+import LoadingScreen from './components/templates/LoadingScreen';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/organisms/header';
 import HeroBanner from './components/templates/HeroBanner';
@@ -90,23 +92,83 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Main app loading state
+const AppContent = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [initialData, setInitialData] = useState({
+    heroBanner: null,
+    categories: [],
+    actionMovies: []
+  });
 
-function App() {
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch initial data in parallel
+        const [heroBannerRes, categoriesRes, actionMoviesRes] = await Promise.all([
+          // Fetch banner movies (adjust the endpoint as needed)
+          axios.get('/api/phim-moi', { params: { limit: 5 } }),
+          // Fetch categories
+          axios.get('/api/the-loai'),
+          // Fetch action movies (or featured movies)
+          axios.get('/api/the-loai/hanh-dong', { params: { limit: 10 } })
+        ]);
+
+        setInitialData({
+          heroBanner: heroBannerRes.data.data || [],
+          categories: categoriesRes.data.data || [],
+          actionMovies: actionMoviesRes.data.data?.items || []
+        });
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error loading initial data:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Đã xảy ra lỗi</h2>
+          <p className="text-red-400 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Router>
-      <div className='min-h-screen overflow-y-auto bg-gray-950'>
-        <Header />
-        <Routes>
+    <>
+      <Header categories={initialData.categories} />
+      <Routes>
           <Route 
             path="/" 
             element={
               <>
-                <HeroBanner />
-                <CategoriesSection />
+                <HeroBanner movies={initialData.heroBanner} />
+                <CategoriesSection categories={initialData.categories} />
                 
                 {/* Always visible sections */}
                 <Suspense fallback={<LoadingFallback />}>
-                  <ActionMovies />
+                  <ActionMovies initialMovies={initialData.actionMovies} />
                 </Suspense>
                 
                 <MoviesByCountry />
@@ -143,6 +205,17 @@ function App() {
           />
           <Route path="/category/:categoryId/:categoryName" element={<CategoryMovies />} />
         </Routes>
+    </>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <div className='min-h-screen overflow-y-auto bg-gray-950'>
+        <Suspense fallback={<LoadingScreen />}>
+          <AppContent />
+        </Suspense>
       </div>
     </Router>
   );
