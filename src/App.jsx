@@ -1,5 +1,9 @@
 import React, { lazy, Suspense, useRef, useEffect, useState } from 'react';
-import axios from 'axios';
+import { 
+  getNewMovies, 
+  getCategories, 
+  getMoviesByCategory 
+} from './services/apiService';
 import LoadingScreen from './components/templates/LoadingScreen';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/organisms/header';
@@ -44,6 +48,9 @@ const LazyLoadComponent = ({ children }) => {
   const ref = useRef(null);
 
   useEffect(() => {
+    const target = ref.current;
+    if (!target) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !hasLoaded) {
@@ -59,14 +66,10 @@ const LazyLoadComponent = ({ children }) => {
       }
     );
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
+    observer.observe(target);
 
     return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
+      observer.unobserve(target);
     };
   }, [hasLoaded]);
 
@@ -109,18 +112,18 @@ const AppContent = () => {
         
         // Fetch initial data in parallel
         const [heroBannerRes, categoriesRes, actionMoviesRes] = await Promise.all([
-          // Fetch banner movies (adjust the endpoint as needed)
-          axios.get('/api/phim-moi', { params: { limit: 5 } }),
-          // Fetch categories
-          axios.get('/api/the-loai'),
-          // Fetch action movies (or featured movies)
-          axios.get('/api/the-loai/hanh-dong', { params: { limit: 10 } })
+          // Fetch latest movies for banner (first page, 5 items)
+          getNewMovies(1).then(res => res.data.data || []),
+          // Fetch all categories
+          getCategories().then(res => res.data || []),
+          // Fetch action movies (first page, 10 items)
+          getMoviesByCategory('hanh-dong', { limit: 10 }).then(res => res.data?.data?.items || [])
         ]);
 
         setInitialData({
-          heroBanner: heroBannerRes.data.data || [],
-          categories: categoriesRes.data.data || [],
-          actionMovies: actionMoviesRes.data.data?.items || []
+          heroBanner: heroBannerRes,
+          categories: categoriesRes,
+          actionMovies: actionMoviesRes
         });
         
         setIsLoading(false);
