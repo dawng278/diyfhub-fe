@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Đăng ký plugin Tailwind cũ vào mảng plugins
+  base: import.meta.env.MODE === 'production' ? '/diyfhub-fe/' : '/',
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
