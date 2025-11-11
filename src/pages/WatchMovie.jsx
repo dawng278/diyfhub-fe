@@ -20,11 +20,14 @@ const WatchMovie = () => {
   ]);
   const [selectedSource, setSelectedSource] = useState(1);
 
-  // Parse episode data from string
+  // Parse episode data from string and ensure no duplicates
   const parseEpisodes = (episodeData) => {
     if (!episodeData) return [];
     
     console.log('Raw episode data:', episodeData);
+    
+    // Use a Set to track unique episode numbers
+    const seenEpisodes = new Set();
     
     const parsed = episodeData
       .split('\n')
@@ -35,9 +38,19 @@ const WatchMovie = () => {
         
         if (parts.length >= 3) {
           const [name, slug, embedUrl] = parts;
+          const episodeNum = getEpisodeNumber(name);
+          
+          // Skip if we've already seen this episode number
+          if (seenEpisodes.has(episodeNum)) {
+            console.log('Skipping duplicate episode:', episodeNum);
+            return null;
+          }
+          
+          seenEpisodes.add(episodeNum);
+          
           return { 
-            name: name || 'Unknown', 
-            slug: slug || '', 
+            name: name || `Tập ${episodeNum}`, 
+            slug: slug || `tap-${episodeNum}`.toLowerCase(), 
             embedUrl: embedUrl || '' 
           };
         }
@@ -45,7 +58,14 @@ const WatchMovie = () => {
       })
       .filter(Boolean);
     
-    console.log('Parsed episodes:', parsed);
+    // Sort episodes by episode number
+    parsed.sort((a, b) => {
+      const numA = parseInt(getEpisodeNumber(a.name)) || 0;
+      const numB = parseInt(getEpisodeNumber(b.name)) || 0;
+      return numA - numB;
+    });
+    
+    console.log('Parsed and deduplicated episodes:', parsed);
     return parsed;
   };
 
@@ -170,17 +190,25 @@ const WatchMovie = () => {
 
   // Get episode number from name - format display
   const getEpisodeNumber = (name) => {
-    if (!name) return '';
+    if (!name) return '0';
     
     // Try to extract number from various formats
-    // "Tập 01", "Tập 1", "01", "Episode 1", etc.
-    const numberMatch = name.match(/(\d+)/);
+    // "Tập 01", "Tập 1", "01", "Episode 1", "Tập 1: Title", etc.
+    const numberMatch = name.match(/(?:Tập|tập|Ep|ep|EP|Tập)\s*(\d+)|^(\d+)/i);
+    
     if (numberMatch) {
-      return numberMatch[1];
+      // Return the first matched group that's not undefined
+      return numberMatch[1] || numberMatch[2] || '0';
     }
     
-    // If no number found, return the name as is
-    return name;
+    // If no number found, try to extract any number from the string
+    const anyNumberMatch = name.match(/\d+/);
+    if (anyNumberMatch) {
+      return anyNumberMatch[0];
+    }
+    
+    // If still no number found, return the first few characters
+    return name.substring(0, 3) || '0';
   };
 
   // Debug: Log current state
@@ -362,16 +390,22 @@ const WatchMovie = () => {
               
               {episodes.length > 0 ? (
                 <div className="episodes-grid">
-                  {episodes.map((episode, index) => {
+                  {episodes.map((episode) => {
                     const isCurrent = currentEpisode?.slug === episode.slug;
                     const episodeNum = getEpisodeNumber(episode.name);
                     
+                    // Skip if we can't determine the episode number
+                    if (!episodeNum) {
+                      console.warn('Skipping episode with invalid number:', episode);
+                      return null;
+                    }
+                    
                     return (
                       <button
-                        key={`${episode.slug}-${index}`}
+                        key={`ep-${episode.slug}`}
                         onClick={() => handleEpisodeChange(episode)}
                         className={`episode-btn ${isCurrent ? 'current-episode' : ''}`}
-                        title={episode.name}
+                        title={`${episode.name}`}
                       >
                         <span className="episode-label">Tập</span>
                         <span className="episode-number">{episodeNum}</span>

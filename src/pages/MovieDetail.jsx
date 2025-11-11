@@ -15,6 +15,7 @@ const MovieDetail = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('episodes');
   const [episodeList, setEpisodeList] = useState([]);
+  const [currentEpisode, setCurrentEpisode] = useState(null);
 
   // Fetch movie details
   const fetchMovieDetails = async () => {
@@ -30,37 +31,37 @@ const MovieDetail = () => {
           console.log('Fetching movie by slug:', movieSlug);
           response = await getMovieBySlug(movieSlug);
           console.log('API Response by slug:', response);
-          
+
           // Check if we have valid movie data
           if (response && response.movie) {
             // Process movie data to include calculated fields and defaults
             const processedMovie = {
               ...response.movie,
               // Rating information
-              imdb_rating: response.movie.tmdb?.vote_average || 
-                          response.movie.imdb?.rating || 
-                          response.movie.vote_average || 
-                          response.movie.rating || 
-                          0,
-              
+              imdb_rating: response.movie.tmdb?.vote_average ||
+                response.movie.imdb?.rating ||
+                response.movie.vote_average ||
+                response.movie.rating ||
+                0,
+
               // Episode information
               episode_current: response.movie.episode_current || '',
               episode_total: response.movie.episode_total || response.movie.total_episodes || 0,
-              
+
               // Localization and type
               lang: response.movie.lang || 'Vietsub',
               type: response.movie.type || 'series',
-              
+
               // Title with fallbacks
               title: response.movie.name || response.movie.title || response.movie.origin_name || 'Không có tiêu đề',
               name: response.movie.name || response.movie.title || response.movie.origin_name || 'Không có tiêu đề',
-              
+
               // Ensure we have an empty array for episodes if not provided
               episodes: response.movie.episodes || []
             };
             console.log('Processed movie data:', processedMovie);
             setMovie(processedMovie);
-            
+
             // If there are categories, fetch related movies
             if (response.movie.category && response.movie.category.length > 0) {
               try {
@@ -75,7 +76,7 @@ const MovieDetail = () => {
                 setRelatedMovies([]);
               }
             }
-            
+
             setLoading(false);
             return; // Exit if successful
           }
@@ -152,26 +153,87 @@ const MovieDetail = () => {
     }
   };
 
-  // Parse episode data from string
-  const parseEpisodes = (episodeString) => {
-    if (!episodeString) return [];
+  // Parse episode data from string or array
+   const parseEpisodes = (episodeData) => {
+    if (!episodeData) return [];
     
-    return episodeString.split('\n').map(line => {
-      const [name, slug, url] = line.split('|');
-      return { name, slug, url };
+    console.log('Raw episode data:', episodeData);
+    
+    // Use a Set to track unique episode numbers
+    const seenEpisodes = new Set();
+    
+    const parsed = episodeData
+      .split('\n')
+      .filter(line => line.trim()) // Remove empty lines
+      .map(ep => {
+        const parts = ep.split('|').map(part => part.trim());
+        console.log('Parsed parts:', parts);
+        
+        if (parts.length >= 3) {
+          const [name, slug, embedUrl] = parts;
+          const episodeNum = getEpisodeNumber(name);
+          
+          // Skip if we've already seen this episode number
+          if (seenEpisodes.has(episodeNum)) {
+            console.log('Skipping duplicate episode:', episodeNum);
+            return null;
+          }
+          
+          seenEpisodes.add(episodeNum);
+          
+          return { 
+            name: name || `Tập ${episodeNum}`, 
+            slug: slug || `tap-${episodeNum}`.toLowerCase(), 
+            embedUrl: embedUrl || '' 
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+    
+    // Sort episodes by episode number
+    parsed.sort((a, b) => {
+      const numA = parseInt(getEpisodeNumber(a.name)) || 0;
+      const numB = parseInt(getEpisodeNumber(b.name)) || 0;
+      return numA - numB;
     });
+    
+    console.log('Parsed and deduplicated episodes:', parsed);
+    return parsed;
   };
 
   // Navigate to watch page
-  const handleWatchEpisode = (episodeSlug) => {
-    navigate(`/xem-phim/${movie.slug}/${episodeSlug}`);
+  const handleWatchEpisode = (episode) => {
+    const episodeSlug = typeof episode === 'string' ? episode : episode.slug;
+    setCurrentEpisode(episode);
+    navigate(`/xem-phim/${movieSlug || movieId}/${episodeSlug}`);
   };
 
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
+  const getEpisodeNumber = (name) => {
+    if (!name) return '0';
 
+    // Try to extract number from various formats
+    // "Tập 01", "Tập 1", "01", "Episode 1", "Tập 1: Title", etc.
+    const numberMatch = name.match(/(?:Tập|tập|Ep|ep|EP|Tập)\s*(\d+)|^(\d+)/i);
+
+    if (numberMatch) {
+      // Return the first matched group that's not undefined
+      return numberMatch[1] || numberMatch[2] || '0';
+    }
+
+    // If no number found, try to extract any number from the string
+    const anyNumberMatch = name.match(/\d+/);
+    if (anyNumberMatch) {
+      return anyNumberMatch[0];
+    }
+
+    // If still no number found, return the first few characters
+    return name.substring(0, 3) || '0';
+  };
   useEffect(() => {
     // Reset states when URL parameters change
     setMovie(null);
@@ -195,15 +257,96 @@ const MovieDetail = () => {
 
   // Update episode list when movie data changes
   useEffect(() => {
-    if (movie?.episode_data) {
-      setEpisodeList(parseEpisodes(movie.episode_data));
-    } else if (movie?.episode_total) {
-      // Fallback to numeric episodes if no episode data
-      setEpisodeList(Array.from({ length: movie.episode_total }, (_, i) => ({
+    console.log('Movie data:', movie); // Debug log
+
+    // 1. First, try to use the episodes array directly
+    if (movie?.episodes?.length > 0) {
+      console.log('Using episodes array:', movie.episodes);
+
+      // If we have episode_current, limit to that number
+      if (movie.episode_current) {
+        const currentEpisodeNum = Math.min(
+          parseInt(movie.episode_current, 10),
+          movie.episodes.length
+        );
+        console.log('Using episode_current to limit episodes:', currentEpisodeNum);
+        setEpisodeList(movie.episodes.slice(0, currentEpisodeNum));
+      }
+      // If no episode_current but we have episode_total, use that
+      else if (movie.episode_total) {
+        const totalEpisodes = Math.min(
+          parseInt(movie.episode_total, 10),
+          movie.episodes.length
+        );
+        console.log('Using episode_total to limit episodes:', totalEpisodes);
+        setEpisodeList(movie.episodes.slice(0, totalEpisodes));
+      }
+      // Otherwise, show all available episodes
+      else {
+        console.log('No episode count, showing all available episodes');
+        setEpisodeList([...movie.episodes]);
+      }
+    }
+    // 2. Fallback to episode_data string if available
+    else if (movie?.episode_data) {
+      console.log('Using episode_data string:', movie.episode_data);
+      const allEpisodes = parseEpisodes(movie.episode_data);
+
+      if (allEpisodes.length > 0) {
+        // If we have episode_current, use it to limit
+        if (movie.episode_current) {
+          const currentEpisodeNum = Math.min(
+            parseInt(movie.episode_current, 10),
+            allEpisodes.length
+          );
+          console.log('Using episode_current with parsed episodes:', currentEpisodeNum);
+          setEpisodeList(allEpisodes.slice(0, currentEpisodeNum));
+        }
+        // If no episode_current but we have episode_total
+        else if (movie.episode_total) {
+          const totalEpisodes = Math.min(
+            parseInt(movie.episode_total, 10),
+            allEpisodes.length
+          );
+          console.log('Using episode_total with parsed episodes:', totalEpisodes);
+          setEpisodeList(allEpisodes.slice(0, totalEpisodes));
+        }
+        // Otherwise show all parsed episodes
+        else {
+          console.log('No episode count, showing all parsed episodes');
+          setEpisodeList([...allEpisodes]);
+        }
+      } else {
+        console.log('No episodes could be parsed from episode_data');
+        setEpisodeList([]);
+      }
+    }
+    // 3. Fallback to generating episodes based on episode_total if available
+    else if (movie?.episode_total) {
+      const totalEpisodes = parseInt(movie.episode_total, 10);
+      console.log('Generating episodes from episode_total:', totalEpisodes);
+
+      const generatedEpisodes = Array.from({ length: totalEpisodes }, (_, i) => ({
         name: `Tập ${i + 1}`,
         slug: `tap-${String(i + 1).padStart(2, '0')}`,
         url: `#`
-      })));
+      }));
+
+      console.log('Generated episodes:', generatedEpisodes);
+      setEpisodeList(generatedEpisodes);
+    }
+    // 4. Last resort: check if there are any episodes in the movie object
+    else if (movie?.episode_list?.length > 0) {
+      console.log('Using episode_list from movie data');
+      setEpisodeList(Array.isArray(movie.episode_list) ?
+        [...movie.episode_list] :
+        parseEpisodes(movie.episode_list)
+      );
+    }
+    // 5. No episodes found
+    else {
+      console.log('No episode data available in any format');
+      setEpisodeList([]);
     }
   }, [movie]);
 
@@ -326,16 +469,16 @@ const MovieDetail = () => {
                   });
                 }}
               >
-                <source 
-                  src={movie.trailer_url || movie.trailer} 
-                  type="video/mp4" 
+                <source
+                  src={movie.trailer_url || movie.trailer}
+                  type="video/mp4"
                 />
                 Your browser does not support the video tag.
               </video>
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-900/90" />
             </div>
           ) : (
-            <div 
+            <div
               className="absolute inset-0 w-full h-full bg-cover bg-center"
               style={{
                 backgroundImage: `url(${movie.backdrop_path || movie.poster_path})`,
@@ -347,7 +490,7 @@ const MovieDetail = () => {
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-900/90" />
             </div>
           )}
-        <div/>
+          <div />
           <div className="container mx-auto px-4 relative z-10 pb-8">
             <div className="flex flex-col md:flex-row gap-8">
               {/* Movie Poster */}
@@ -367,7 +510,7 @@ const MovieDetail = () => {
               <div className="text-white flex-1 relative z-10">
                 {/* Play Trailer Button */}
                 {movie.trailer_url && (
-                  <button 
+                  <button
                     className="absolute -top-12 right-0 bg-red-600 hover:bg-red-700 text-white rounded-full p-3 shadow-lg transform transition-transform hover:scale-105"
                     onClick={() => {
                       // You can add a modal or fullscreen player here
@@ -383,9 +526,10 @@ const MovieDetail = () => {
                   <span className="bg-red-600 text-xs px-2 py-1 rounded">
                     {movie.quality || 'HD'}
                   </span>
-                  {movie.episode_count && (
+                  {movie.episode_current && (
                     <span className="bg-blue-600 text-xs px-2 py-1 rounded">
-                      {movie.episode_count} tập
+                      Đã phát: {movie.episode_current}
+                      {movie.episode_total ? `/${movie.episode_total}` : ''}
                     </span>
                   )}
                 </div>
@@ -417,12 +561,12 @@ const MovieDetail = () => {
                         const categoryId = cat._id || cat.id;
                         const categoryName = cat.name || cat.category_name;
                         // Use slug if available, otherwise generate from name
-                        const categorySlug = cat.slug || cat.slug_url || 
+                        const categorySlug = cat.slug || cat.slug_url ||
                           categoryName.toLowerCase()
                             .replace(/[^\w\s-]/g, '') // Remove special chars
                             .replace(/\s+/g, '-')      // Replace spaces with -
                             .replace(/-+/g, '-');       // Replace multiple - with single -
-                        
+
                         return (
                           <Link
                             key={categoryId}
@@ -449,7 +593,20 @@ const MovieDetail = () => {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 mt-6">
-                  <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium flex items-center">
+                  <button 
+                    onClick={() => {
+                      if (movie?.slug) {
+                        // If there are episodes, go to the first one, otherwise just use the movie slug
+                        const firstEpisode = episodeList[0];
+                        if (firstEpisode?.slug) {
+                          navigate(`/xem-phim/${movie.slug}/${firstEpisode.slug}`);
+                        } else {
+                          navigate(`/xem-phim/${movie.slug}`);
+                        }
+                      }
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium flex items-center"
+                  >
                     <FaPlay className="mr-2" /> Xem phim
                   </button>
                   <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center">
@@ -518,20 +675,65 @@ const MovieDetail = () => {
                 <div className="p-6">
                   {activeTab === 'episodes' && (
                     <div>
-                      <h3 className="text-xl font-semibold text-white mb-4">Danh sách tập</h3>
-                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                        {episodeList.map((episode, index) => {
-                          const episodeNumber = index + 1;
-                          return (
-                            <button
-                              key={episode.slug || index}
-                              onClick={() => handleWatchEpisode(episode.slug || `tap-${String(episodeNumber).padStart(2, '0')}`)}
-                              className="py-2 px-3 rounded-md text-center block bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                            >
-                              {episode.name || `Tập ${episodeNumber}`}
-                            </button>
-                          );
-                        })}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                        <h3 className="text-xl font-semibold text-white">
+                          Danh sách tập phim
+                          {movie.name ? `: ${movie.name}` : ''}
+                        </h3>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gray-800 text-sm px-3 py-1 rounded-full">
+                            <span className="text-red-400">Đã phát: </span>
+                            <span className="font-medium text-gray-400">{movie.episode_current}</span>
+                            {movie.episode_current && (
+                              <span className="text-gray-400">/{movie.episode_total} tập</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="episodes-section bg-gray-900 p-4 rounded-lg border border-gray-800">
+                        {episodeList.length > 0 ? (
+                          <div className="episodes-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                            {episodeList.map((episode) => {
+                              const isCurrent = currentEpisode?.slug === episode.slug;
+                              const episodeNum = getEpisodeNumber(episode.name);
+                              // Skip if we can't determine the episode number
+                              if (!episodeNum) {
+                                console.warn('Skipping episode with invalid number:', episode);
+                                return null;
+                              }
+
+                              return (
+                                <button
+                                  key={`ep-${episode.slug}`}
+                                  onClick={() => handleWatchEpisode(episode)}
+                                  className={`episode-btn relative p-2 rounded-md text-center transition-all duration-200 ${isCurrent
+                                      ? 'bg-red-600 text-white transform scale-105 shadow-lg'
+                                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+                                    }`}
+                                  title={`${episode.name}`}
+                                >
+                                  <span className="episode-label block text-sm font-medium">
+                                    {episodeNum?.replace('Tập', '').trim() || `Tập ${episodeNum}`}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                      <FaPlay className="text-[10px]" />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="no-episodes text-center py-8">
+                            <div className="text-gray-500 mb-2">
+                              <FaFilm className="mx-auto text-4xl mb-3 opacity-50" />
+                            </div>
+                            <p className="text-gray-400">Chưa có tập phim nào được cập nhật</p>
+                            <p className="text-sm text-gray-500 mt-1">Vui lòng quay lại sau</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
