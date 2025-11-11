@@ -1,246 +1,210 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import LoadingSpinner from '../atoms/LoadingSpinner';
-import { getMovieBySlug } from '../../services/apiService';
-import { FaHome, FaPlay, FaArrowLeft } from 'react-icons/fa';
+import { getMoviesByCategory } from '../../services/apiService';
 
-const WatchMovie = () => {
-  const { movieSlug, episodeSlug } = useParams();
+const ITEMS_PER_PAGE = 24;
+
+const MoviesGrid = () => {
+  const { categoryId, categoryName } = useParams();
   const navigate = useNavigate();
   
-  const [movie, setMovie] = useState(null);
+  const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentEpisode, setCurrentEpisode] = useState(null);
-  const [currentEpisodeUrl, setCurrentEpisodeUrl] = useState('');
-  const [episodes, setEpisodes] = useState([]);
-  const [sources, setSources] = useState([
-    { id: 1, name: 'Server 1', active: true },
-    { id: 2, name: 'Server 2', active: false },
-  ]);
-  const [selectedSource, setSelectedSource] = useState(1);
-  const [showDebug, setShowDebug] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  
+  const decodedCategoryName = categoryName ? decodeURIComponent(categoryName) : 'Thể loại';
 
-  // Parse episode data from string
-  const parseEpisodes = (episodeData) => {
-    if (!episodeData) return [];
+  // 🐛 DEBUG: Log component mount và params
+  console.log('🎬 MoviesGrid Component Rendered!');
+  console.log('  - categoryId:', categoryId);
+  console.log('  - categoryName:', categoryName);
+  console.log('  - decodedCategoryName:', decodedCategoryName);
+  console.log('  - loading:', loading);
+  console.log('  - movies.length:', movies.length);
+  console.log('  - error:', error);
+
+  // Helper function to construct image URL
+  const constructImageUrl = (path) => {
+    if (!path) return null;
     
-    console.log('Raw episode data:', episodeData);
+    // If it's already a full URL, return as is
+    if (path.startsWith('http')) return path;
     
-    const parsed = episodeData
-      .split('\n')
-      .filter(line => line.trim()) // Remove empty lines
-      .map(ep => {
-        const parts = ep.split('|').map(part => part.trim());
-        console.log('Parsed parts:', parts);
-        
-        if (parts.length >= 3) {
-          const [name, slug, embedUrl] = parts;
-          return { 
-            name: name || 'Unknown', 
-            slug: slug || '', 
-            embedUrl: embedUrl || '' 
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    // Clean up the path
+    const cleanPath = path.replace(/^\/+/, '');
     
-    console.log('Parsed episodes:', parsed);
-    return parsed;
+    // Construct full URL with img.phimapi.com (the CDN for images)
+    return `https://img.phimapi.com/${cleanPath}`;
   };
 
-  // Load movie data
-  const loadMovie = async () => {
-    if (!movieSlug) {
-      console.error('No movieSlug provided');
-      return;
-    }
-    
+  const fetchMovies = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('Loading movie with slug:', movieSlug);
-      const response = await getMovieBySlug(movieSlug);
-      console.log('Full API Response:', response);
-      console.log('Episodes in response:', response?.episodes);
-      
-      if (response?.movie) {
-        setMovie(response.movie);
-        console.log('Movie data:', response.movie);
-        
-        let parsedEpisodes = [];
-        
-        // Try multiple sources for episodes
-        // 1. Check episodes array (PhimAPI format)
-        if (response.episodes && Array.isArray(response.episodes) && response.episodes.length > 0) {
-          console.log('Found episodes array:', response.episodes);
-          console.log('First episode structure:', response.episodes[0]);
-          
-          // PhimAPI returns episodes in server_data format
-          response.episodes.forEach((server, serverIndex) => {
-            console.log(`Processing server ${serverIndex}:`, server);
-            
-            if (server.server_data && Array.isArray(server.server_data)) {
-              console.log(`Server ${serverIndex} has ${server.server_data.length} episodes`);
-              
-              server.server_data.forEach((ep, epIndex) => {
-                console.log(`Episode ${epIndex}:`, ep);
-                parsedEpisodes.push({
-                  name: ep.name || `Tập ${ep.slug || epIndex + 1}`,
-                  slug: ep.slug || ep.filename || `tap-${epIndex + 1}`,
-                  embedUrl: ep.link_embed || ep.link_m3u8 || ''
-                });
-              });
-            } else {
-              console.warn(`Server ${serverIndex} has no server_data or invalid format`);
-            }
-          });
-          
-          console.log('Parsed episodes from API:', parsedEpisodes);
-        }
-        
-        // 2. Check episode_data string format (custom format)
-        if (parsedEpisodes.length === 0 && response.movie.episode_data) {
-          console.log('Trying episode_data string:', response.movie.episode_data);
-          parsedEpisodes = parseEpisodes(response.movie.episode_data);
-        }
-        
-        // 3. Single movie fallback
-        if (parsedEpisodes.length === 0) {
-          console.log('No episodes found, checking if single movie');
-          console.log('Movie type:', response.movie.type);
-          console.log('Episode current:', response.movie.episode_current);
-          console.log('Episode total:', response.movie.episode_total);
-          
-          if (response.movie.type === 'single' || 
-              response.movie.episode_total === '1' || 
-              response.movie.episode_current === 'Full' ||
-              response.movie.episode_current === 'Hoàn tất') {
-            console.log('Creating single episode');
-            parsedEpisodes = [{
-              name: 'Full',
-              slug: 'full',
-              embedUrl: response.movie.trailer_url || ''
-            }];
-          }
-        }
-        
-        console.log('Final parsed episodes:', parsedEpisodes);
-        setEpisodes(parsedEpisodes);
-        
-        if (parsedEpisodes.length > 0) {
-          // Find and set current episode if episodeSlug is provided
-          if (episodeSlug) {
-            console.log('Looking for episode with slug:', episodeSlug);
-            const foundEpisode = parsedEpisodes.find(ep => ep.slug === episodeSlug);
-            
-            if (foundEpisode) {
-              console.log('Found episode:', foundEpisode);
-              setCurrentEpisode(foundEpisode);
-              setCurrentEpisodeUrl(foundEpisode.embedUrl);
-            } else {
-              console.warn('Episode not found, using first episode');
-              const firstEpisode = parsedEpisodes[0];
-              setCurrentEpisode(firstEpisode);
-              setCurrentEpisodeUrl(firstEpisode.embedUrl);
-              navigate(`/xem-phim/${movieSlug}/${firstEpisode.slug}`, { replace: true });
-            }
-          } else {
-            // Default to first episode if no episode is selected
-            console.log('No episode selected, using first episode');
-            const firstEpisode = parsedEpisodes[0];
-            setCurrentEpisode(firstEpisode);
-            setCurrentEpisodeUrl(firstEpisode.embedUrl);
-            navigate(`/xem-phim/${movieSlug}/${firstEpisode.slug}`, { replace: true });
-          }
-        } else {
-          console.warn('No episodes found');
-          setError('Phim chưa có tập nào để xem');
-        }
-      } else {
-        setError('Không tìm thấy thông tin phim');
+      if (!categoryName) {
+        console.error('No categoryName provided!');
+        navigate('/');
+        return;
       }
+
+      console.log(`Fetching movies for category slug: ${categoryName}`);
+      
+      // Use the category slug with getMoviesByCategory
+      const response = await getMoviesByCategory(categoryName, { 
+        page, 
+        limit: ITEMS_PER_PAGE 
+      });
+      
+      console.log('✅ Full API Response:', response);
+      
+      let moviesData = [];
+      let paginationData = null;
+      
+      if (response) {
+        if (response.data?.data?.items) {
+          moviesData = response.data.data.items;
+          paginationData = response.data.data.params?.pagination;
+        }
+        else if (response.data?.items) {
+          moviesData = response.data.items;
+          paginationData = response.data.params?.pagination || response.data.pagination;
+        }
+        else if (Array.isArray(response.data)) {
+          moviesData = response.data;
+        }
+        else if (response.items) {
+          moviesData = response.items;
+          paginationData = response.params?.pagination || response.pagination;
+        }
+        else if (Array.isArray(response)) {
+          moviesData = response;
+        }
+      }
+      
+      console.log('Extracted movies data:', moviesData);
+      console.log('Pagination data:', paginationData);
+      
+      if (!moviesData || !Array.isArray(moviesData) || moviesData.length === 0) {
+        setError('Không tìm thấy phim nào trong thể loại này');
+        setMovies([]);
+        return;
+      }
+      
+      const processedMovies = moviesData.map(movie => {
+        console.log('Processing movie:', movie);
+        
+        // Try to get the best available image - prioritize thumb_url
+        let imageUrl = constructImageUrl( 
+          movie.poster_url || 
+          movie.poster_path || 
+          movie.poster
+        );
+        
+        console.log('Image URL constructed:', imageUrl);
+        
+        // If we still don't have a valid URL, use a placeholder
+        if (!imageUrl) {
+          console.warn('No valid image URL found for movie:', movie._id || movie.id);
+          imageUrl = null;
+        }
+
+        return {
+          ...movie,
+          _id: movie._id || movie.id,
+          title: movie.name || movie.title || movie.origin_name || 'Không có tiêu đề',
+          origin_name: movie.origin_name || movie.original_name || '',
+          poster_url: imageUrl,
+          slug: movie.slug || movie._id || movie.id,
+          imdb_rating: movie.tmdb?.vote_average || movie.imdb?.rating || movie.vote_average || movie.rating || 0,
+          episode_current: movie.episode_current || '',
+          episode_total: movie.episode_total || movie.total_episodes || 0,
+          year: movie.year || movie.release_date?.substring(0, 4) || '',
+          quality: movie.quality || 'HD',
+          lang: movie.lang || 'Vietsub',
+          type: movie.type || 'series'
+        };
+      });
+      
+      console.log('Processed movies:', processedMovies);
+      setMovies(processedMovies);
+      
+      if (paginationData) {
+        setTotalPages(paginationData.totalPages || paginationData.total_pages || 1);
+        setCurrentPage(paginationData.currentPage || paginationData.current_page || page);
+      } else {
+        setTotalPages(1);
+        setCurrentPage(1);
+      }
+      
     } catch (err) {
-      console.error('Error loading movie:', err);
-      setError('Có lỗi xảy ra khi tải thông tin phim: ' + err.message);
+      console.error('Error in fetchMovies:', err);
+      console.error('Error details:', err.response || err.message);
+      setError(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tải dữ liệu');
+      setMovies([]);
     } finally {
       setLoading(false);
     }
+  }, [categoryId, categoryName, decodedCategoryName, navigate]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Load movie on mount
+  const handleMovieClick = (movie) => {
+    navigate(`/movie/${movie.slug}`);
+  };
+
   useEffect(() => {
-    console.log('useEffect triggered with:', { movieSlug, episodeSlug });
-    loadMovie();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [movieSlug, episodeSlug]);
-  
-  // Handle episode change
-  const handleEpisodeChange = (episode) => {
-    console.log('Changing to episode:', episode);
-    setCurrentEpisode(episode);
-    setCurrentEpisodeUrl(episode.embedUrl);
-    navigate(`/xem-phim/${movieSlug}/${episode.slug}`, { replace: true });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Handle source change
-  const handleSourceChange = (sourceId) => {
-    console.log('Changing source to:', sourceId);
-    setSelectedSource(sourceId);
-    setSources(sources.map(source => ({
-      ...source,
-      active: source.id === sourceId
-    })));
-  };
-
-  // Get episode number from name - format display
-  const getEpisodeNumber = (name) => {
-    if (!name) return '';
+    console.log('=== 🔄 MoviesGrid useEffect TRIGGERED ===');
+    console.log('categoryId:', categoryId);
+    console.log('categoryName:', categoryName);
+    console.log('decodedCategoryName:', decodedCategoryName);
+    console.log('currentPage:', currentPage);
+    console.log('loading:', loading);
+    console.log('movies.length:', movies.length);
     
-    // Try to extract number from various formats
-    // "Tập 01", "Tập 1", "01", "Episode 1", etc.
-    const numberMatch = name.match(/(\d+)/);
-    if (numberMatch) {
-      return numberMatch[1];
+    if (categoryId || categoryName) {
+      console.log('✅ Calling fetchMovies...');
+      fetchMovies(currentPage);
+    } else {
+      console.warn('❌ No categoryId or categoryName found!');
     }
-    
-    // If no number found, return the name as is
-    return name;
-  };
+  }, [currentPage, fetchMovies, categoryId, categoryName]);
 
-  // Debug: Log current state
-  useEffect(() => {
-    console.log('Current State:', {
-      movie,
-      episodes,
-      currentEpisode,
-      currentEpisodeUrl
-    });
-  }, [movie, episodes, currentEpisode, currentEpisodeUrl]);
-
-  // Loading state
   if (loading) {
     return (
-      <div className="loading-section">
-        <div className="container text-center py-5">
-          <LoadingSpinner />
-          <p className="loading-text">Đang tải video...</p>
+      <div className="min-h-screen bg-gray-50 py-6">
+        <div className="container mx-auto px-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="bg-gray-200 rounded-lg aspect-[2/3] mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="error-section">
-        <div className="container py-5">
-          <div className="alert alert-danger" role="alert">
-            {error}
-            <button onClick={loadMovie} className="btn btn-sm btn-outline-danger ms-2">
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-3">
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8 text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Lỗi</h2>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <button
+              onClick={() => fetchMovies(currentPage)}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
               Thử lại
             </button>
           </div>
@@ -249,502 +213,233 @@ const WatchMovie = () => {
     );
   }
 
-  // No movie found
-  if (!movie) {
+  if (movies.length === 0) {
     return (
-      <div className="no-data-section">
-        <div className="container text-center py-5">
-          <div className="text-6xl mb-4">🎬</div>
-          <h3 className="text-light mb-2">Không tìm thấy phim</h3>
-          <p className="text-muted mb-4">
-            Phim bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
-          </p>
-          <button 
-            onClick={() => navigate('/')} 
-            className="btn-retry"
-          >
-            <FaHome className="inline mr-2" />
-            Về trang chủ
-          </button>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-3">
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Không tìm thấy phim</h2>
+            <p className="text-gray-600 mb-4">Không có phim nào trong thể loại này.</p>
+            <div className="text-left bg-gray-100 p-4 rounded text-xs">
+              <p><strong>Debug Info:</strong></p>
+              <p>Category ID: {categoryId}</p>
+              <p>Category Name: {categoryName}</p>
+              <p>Decoded: {decodedCategoryName}</p>
+              <p>Movies Length: {movies.length}</p>
+              <p>Loading: {loading.toString()}</p>
+              <p>Error: {error || 'None'}</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="watch-page">
-      <main className="main-content">
-        <div className="container mx-auto px-4">
-          {/* Video Player Section */}
-          <div className="video-section">
-            <div className="video-container">
-              <div className="flex flex-col space-y-4 mb-4">
-                <div className="flex items-center">
-                  <button 
-                    onClick={() => navigate(-1)}
-                    className="mr-4 p-2 rounded-full hover:bg-gray-800 transition-colors"
-                    aria-label="Quay lại"
-                  >
-                    <FaArrowLeft />
-                  </button>
-                  <div>
-                    <h2 className="video-title">{movie.name}</h2>
-                    {currentEpisode && (
-                      <div className="flex items-center mt-2">
-                        <span className="bg-red-600 text-white text-xs px-2 py-1 rounded mr-2">
-                          {movie.episode_current || 'Đang cập nhật'}
-                        </span>
-                        <p className="video-episode">
-                          <FaPlay className="inline mr-2 text-red-500" />
-                          {currentEpisode.name}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Server Selection */}
-                {sources.length > 0 && (
-                  <div className="server-selection">
-                    <div className="text-sm font-medium text-gray-300 mb-2">Chọn server:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {sources.map((source) => (
-                        <button
-                          key={source.id}
-                          onClick={() => handleSourceChange(source.id)}
-                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                            selectedSource === source.id
-                              ? 'bg-red-600 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                        >
-                          {source.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="video-player">
-                {currentEpisodeUrl ? (
-                  <div className="relative w-full pb-[56.25%] bg-black rounded-lg overflow-hidden shadow-xl">
-                    <iframe
-                      key={currentEpisodeUrl}
-                      src={currentEpisodeUrl}
-                      className="absolute top-0 left-0 w-full h-full"
-                      frameBorder="0"
-                      allowFullScreen
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                      title={currentEpisode?.name || 'Video player'}
-                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
-                      referrerPolicy="origin"
-                    />
-                  </div>
-                ) : (
-                  <div className="video-placeholder">
-                    <FaPlay className="text-6xl text-gray-400 mb-4" />
-                    <p className="text-gray-400">
-                      {episodes.length > 0 ? 'Chọn tập để bắt đầu xem' : 'Không có tập phim nào để phát'}
-                    </p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Debug Info - Toggle button */}
-              <div className="mt-4">
-                <button 
-                  onClick={() => setShowDebug(!showDebug)}
-                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300"
-                >
-                  {showDebug ? 'Ẩn' : 'Hiện'} Debug Info
-                </button>
-                
-                {showDebug && (
-                  <div className="mt-2 p-4 bg-gray-800 rounded text-xs text-gray-300 overflow-auto max-h-96">
-                    <p><strong>Debug Info:</strong></p>
-                    <p className="mt-2"><strong>Episodes count:</strong> {episodes.length}</p>
-                    <p><strong>Current Episode:</strong> {currentEpisode?.name || 'None'}</p>
-                    <p><strong>Current URL:</strong> {currentEpisodeUrl || 'None'}</p>
-                    <p className="mt-2"><strong>Movie Type:</strong> {movie.type}</p>
-                    <p><strong>Episode Current:</strong> {movie.episode_current}</p>
-                    <p><strong>Episode Total:</strong> {movie.episode_total}</p>
-                    
-                    <div className="mt-3 p-2 bg-gray-900 rounded">
-                      <p className="font-bold mb-2">All Episodes:</p>
-                      {episodes.length > 0 ? (
-                        <pre className="text-xs overflow-auto">
-                          {JSON.stringify(episodes, null, 2)}
-                        </pre>
-                      ) : (
-                        <p className="text-yellow-400">No episodes found</p>
-                      )}
-                    </div>
-                    
-                    <div className="mt-3 p-2 bg-gray-900 rounded">
-                      <p className="font-bold mb-2">Console Logs:</p>
-                      <p className="text-xs text-blue-400">✓ Open browser console (F12)</p>
-                      <p className="text-xs text-blue-400">✓ Look for "Full API Response"</p>
-                      <p className="text-xs text-blue-400">✓ Look for "Episodes in response"</p>
-                      <p className="text-xs text-blue-400">✓ Look for "Parsed episodes from API"</p>
-                    </div>
-                    
-                    <button 
-                      onClick={() => {
-                        console.log('=== MANUAL DEBUG ===');
-                        console.log('Movie:', movie);
-                        console.log('Episodes:', episodes);
-                        console.log('Current Episode:', currentEpisode);
-                        console.log('Current URL:', currentEpisodeUrl);
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="container mx-auto px-3">
+        {/* Debug Info - XÓA SAU KHI FIX */}
+        {/* <div className="bg-yellow-100 border-2 border-yellow-400 p-4 mb-4 rounded">
+          <h3 className="font-bold text-yellow-800 mb-2">🐛 DEBUG INFO (Xóa sau khi fix)</h3>
+          <div className="text-sm text-yellow-800">
+            <p>Loading: {loading.toString()}</p>
+            <p>Error: {error || 'None'}</p>
+            <p>Movies count: {movies.length}</p>
+            <p>Category ID: {categoryId}</p>
+            <p>Category Name: {categoryName}</p>
+            <p>Current Page: {currentPage}</p>
+            <p>Total Pages: {totalPages}</p>
+          </div>
+        </div> */}
+        
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">
+          {decodedCategoryName}
+        </h1>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {movies.map((movie) => (
+            <div 
+              key={movie._id || movie.slug}
+              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+              onClick={() => handleMovieClick(movie)}
+            >
+              {/* Movie Poster */}
+              <div className="aspect-[2/3] relative overflow-hidden">
+                <div className="relative w-full h-full bg-gray-100 flex items-center justify-center">
+                  {movie.poster_url ? (
+                    <img
+                      src={movie.poster_url}
+                      alt={movie.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                      onError={(e) => {
+                        console.warn('Failed to load image:', e.target.src, 'for movie:', movie.title);
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentNode;
+                        if (parent && !parent.querySelector('.fallback-text')) {
+                          const fallbackDiv = document.createElement('div');
+                          fallbackDiv.className = 'fallback-text w-full h-full flex items-center justify-center text-gray-400 text-sm px-4 text-center';
+                          fallbackDiv.textContent = 'Không tải được ảnh';
+                          parent.appendChild(fallbackDiv);
+                        }
                       }}
-                      className="mt-3 px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
-                    >
-                      Print to Console
-                    </button>
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm px-4 text-center">
+                      Không có ảnh
+                    </div>
+                  )}
+                </div>
+                
+                {/* Overlay with Play Button */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-red-600 rounded-full p-4 transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Episode Info Overlay */}
+                  {movie.episode_current && (
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+                      <p className="text-white text-xs font-semibold">
+                        {movie.episode_current}
+                        {movie.episode_total > 0 && ` / ${movie.episode_total}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Quality & Language Badge */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {movie.quality && (
+                    <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
+                      {movie.quality}
+                    </span>
+                  )}
+                  {movie.lang && (
+                    <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
+                      {movie.lang}
+                    </span>
+                  )}
+                </div>
+                
+                {/* IMDB Rating */}
+                {movie.imdb_rating > 0 && (
+                  <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full flex items-center shadow-lg">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    {movie.imdb_rating.toFixed(1)}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-          
-          {/* Episodes Section */}
-          <div className="episodes-section">
-            <div className="container mx-auto">
-              <div className="flex justify-between items-center mb-4 px-4">
-                <h3 className="episodes-title">Danh sách tập phim</h3>
-                <div className="text-sm text-gray-400">
-                  {episodes.length} / {movie.episode_total || 'N/A'} tập
+              
+              {/* Movie Info */}
+              <div className="p-3">
+                <h3 
+                  className="font-semibold text-sm text-gray-900 mb-1 line-clamp-2 min-h-[40px] group-hover:text-red-600 transition-colors" 
+                  title={movie.title}
+                >
+                  {movie.title}
+                </h3>
+                
+                {/* Origin Name */}
+                {movie.origin_name && movie.origin_name !== movie.title && (
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-1" title={movie.origin_name}>
+                    {movie.origin_name}
+                  </p>
+                )}
+                
+                {/* Year and Type */}
+                <div className="flex justify-between items-center text-xs text-gray-600">
+                  <span className="font-medium">{movie.year || 'N/A'}</span>
+                  <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 capitalize">
+                    {movie.type === 'series' ? 'Phim bộ' : 'Phim lẻ'}
+                  </span>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-8">
+            <div className="flex space-x-2 bg-white rounded-lg shadow p-2">
+              <button
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                title="Trang đầu"
+              >
+                &laquo;
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                title="Trang trước"
+              >
+                &lsaquo;
+              </button>
               
-              {episodes.length > 0 ? (
-                <div className="episodes-grid">
-                  {episodes.map((episode, index) => {
-                    const isCurrent = currentEpisode?.slug === episode.slug;
-                    const episodeNum = getEpisodeNumber(episode.name);
-                    
-                    return (
-                      <button
-                        key={`${episode.slug}-${index}`}
-                        onClick={() => handleEpisodeChange(episode)}
-                        className={`episode-btn ${isCurrent ? 'current-episode' : ''}`}
-                        title={episode.name}
-                      >
-                        <span className="episode-label">Tập</span>
-                        <span className="episode-number">{episodeNum}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="no-episodes">
-                  <p>Chưa có tập phim nào được cập nhật.</p>
-                  <p className="text-sm mt-2 text-gray-500">Vui lòng quay lại sau.</p>
-                </div>
-              )}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`px-4 py-2 rounded font-medium transition-all ${
+                      currentPage === pageNum 
+                        ? 'bg-red-600 text-white shadow-md' 
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                title="Trang sau"
+              >
+                &rsaquo;
+              </button>
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                title="Trang cuối"
+              >
+                &raquo;
+              </button>
             </div>
           </div>
+        )}
+        
+        {/* Page Info */}
+        <div className="text-center mt-4 text-sm text-gray-600">
+          Trang {currentPage} / {totalPages} - Tổng {movies.length} phim
         </div>
-      </main>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
-.watch-page {
-  min-height: 100vh;
-  background: #0f172a;
-  color: white;
-  padding-top: 1rem;
-}
-
-.main-content {
-  min-height: calc(100vh - 140px);
-  padding: 1rem 0 3rem;
-}
-
-/* Loading & Error States */
-.loading-section,
-.error-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-  text-align: center;
-}
-
-.loading-text {
-  margin-top: 1rem;
-  color: #a0a0a0;
-  font-size: 1.1rem;
-}
-
-.alert {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-}
-
-.alert-danger {
-  color: #fecaca;
-  background-color: #7f1d1d;
-  border-color: #fecaca;
-}
-
-.btn {
-  display: inline-block;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  border-radius: 0.25rem;
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, 
-              border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  border-radius: 0.2rem;
-}
-
-.btn-outline-danger {
-  color: #fecaca;
-  border-color: #fecaca;
-  background-color: transparent;
-}
-
-.btn-outline-danger:hover {
-  color: #0f172a;
-  background-color: #fecaca;
-  border-color: #fecaca;
-}
-
-/* Video Section */
-.video-section {
-  margin-bottom: 3rem;
-}
-
-.video-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.video-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: inline-block;
-}
-
-.video-episode {
-  font-size: 1rem;
-  color: #94a3b8;
-  margin: 0;
-  display: flex;
-  align-items: center;
-}
-
-.video-player {
-  position: relative;
-  width: 100%;
-  height: 0;
-  padding-bottom: 56.25%;
-  background: #000;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.video-placeholder {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: #64748b;
-  width: 100%;
-  padding: 2rem;
-}
-
-/* Episodes Section */
-.episodes-section {
-  background: rgba(15, 23, 42, 0.8);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 2rem 0;
-  border-radius: 0.75rem;
-  margin-top: 2rem;
-}
-
-.episodes-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  color: #fff;
-}
-
-.episodes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  gap: 0.75rem;
-  padding: 0 1rem;
-  max-width: 100%;
-}
-
-.episode-btn {
-  min-width: 70px;
-  height: 50px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background-color: #1e293b;
-  color: #e2e8f0;
-  border: 2px solid transparent;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0.5rem;
-  position: relative;
-}
-
-.episode-label {
-  font-size: 0.7rem;
-  opacity: 0.7;
-  font-weight: 500;
-}
-
-.episode-number {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.episode-btn:hover {
-  background-color: #334155;
-  transform: translateY(-2px);
-  border-color: #475569;
-}
-
-.episode-btn.current-episode {
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
-  color: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transform: translateY(-2px);
-  border-color: transparent;
-}
-
-.episode-btn.current-episode .episode-label {
-  opacity: 0.9;
-}
-
-.no-episodes {
-  text-align: center;
-  padding: 3rem 2rem;
-  color: #94a3b8;
-}
-
-/* No Data State */
-.no-data-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-  text-align: center;
-  padding: 2rem;
-}
-
-.btn-retry {
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
-  border: none;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 9999px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  margin-top: 1rem;
-}
-
-.btn-retry:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .video-title {
-    font-size: 1.5rem;
-  }
-  
-  .video-episode {
-    font-size: 0.95rem;
-  }
-  
-  .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
-    gap: 0.6rem;
-  }
-  
-  .episode-btn {
-    min-width: 65px;
-    height: 45px;
-  }
-  
-  .episode-label {
-    font-size: 0.65rem;
-  }
-  
-  .episode-number {
-    font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .video-title {
-    font-size: 1.3rem;
-  }
-  
-  .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 0.5rem;
-  }
-  
-  .episode-btn {
-    min-width: 60px;
-    height: 42px;
-    border-radius: 0.375rem;
-  }
-  
-  .episode-label {
-    font-size: 0.6rem;
-  }
-  
-  .episode-number {
-    font-size: 0.9rem;
-  }
-  
-  .episodes-title {
-    font-size: 1.3rem;
-  }
-}
-      ` }} />
+      </div>
     </div>
   );
 };
 
-export default WatchMovie;
+export default MoviesGrid;
