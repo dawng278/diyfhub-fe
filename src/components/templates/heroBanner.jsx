@@ -29,32 +29,37 @@ function HeroBanner() {
         // Định nghĩa 1 hàm async để gọi API
         const fetchData = async () => {
           try {
-            // Gọi API
+            setLoading(true);
+            // Call the API
             const response = await getNewMovies(1);
             
-            // Dùng console.log để kiểm tra cấu trúc dữ liệu trả về
+            // Log the response for debugging
             console.log('Full API Response:', response);
-            console.log('Response Data:', response.data);
             
-            // Kiểm tra cấu trúc dữ liệu
+            // Handle different possible response structures
             let movieData = [];
-            if (response.data.data && response.data.data.items) {
-              movieData = response.data.data.items;
-            } else if (response.data.items) {
-              movieData = response.data.items;
+            if (Array.isArray(response)) {
+              // If the response is already an array
+              movieData = response;
+            } else if (response && response.items) {
+              // If the response has an items array
+              movieData = response.items;
+            } else if (response && response.data) {
+              // If the response has a data field
+              movieData = Array.isArray(response.data) ? response.data : [];
             }
             
-            console.log('Movies Data:', movieData);
-            console.log('First Movie:', movieData[0]);
-    
-            // Lưu dữ liệu vào state
+            console.log('Processed Movies Data:', movieData);
+            
+            // Update state with the movie data
             setMovies(movieData);
-            setLoading(false);
-    
+            setError(null);
           } catch (err) {
             console.error('Lỗi khi gọi API:', err);
-            console.error('Error details:', err.response?.data || err.message);
+            console.error('Error details:', err.message);
             setError(err);
+            setMovies([]); // Ensure we have an empty array on error
+          } finally {
             setLoading(false);
           }
         };

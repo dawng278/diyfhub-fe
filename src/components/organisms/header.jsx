@@ -106,44 +106,34 @@ function Navbar() {
         const fetchData = async () => {
             try {
                 console.log('Fetching categories...');
-                const genresResponse = await getCategories();
-                console.log('Categories response:', genresResponse);
+                const categoriesData = await getCategories();
+                console.log('Categories response:', categoriesData);
                 
-                if (genresResponse && genresResponse.data) {
-                    // Handle case where data might be in different format
-                    const categoriesData = Array.isArray(genresResponse.data) 
-                        ? genresResponse.data 
-                        : (genresResponse.data.data || []);
-                    
-                    const formattedGenres = categoriesData.map(genre => ({
-                        id: genre._id || genre.id,
-                        name: genre.name,
-                        slug: genre.slug || genre.name.toLowerCase().replace(/\s+/g, '-')
-                    }));
-                    
-                    console.log('Formatted genres:', formattedGenres);
-                    setGenres(formattedGenres);
-                }
+                // Format categories data
+                const formattedGenres = categoriesData.map(category => ({
+                    id: category._id || category.id || Math.random().toString(36).substr(2, 9),
+                    name: category.name || category.category_name || 'Unknown',
+                    slug: (category.slug || category.slug_url || '').trim() || 
+                          (category.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                })).filter(cat => cat.name !== 'Unknown');
+                
+                console.log('Formatted genres:', formattedGenres);
+                setGenres(formattedGenres);
 
                 console.log('Fetching countries...');
-                const countriesResponse = await getCountries();
-                console.log('Countries response:', countriesResponse);
+                const countriesData = await getCountries();
+                console.log('Countries response:', countriesData);
                 
-                if (countriesResponse && countriesResponse.data) {
-                    // Handle case where data might be in different format
-                    const countriesData = Array.isArray(countriesResponse.data)
-                        ? countriesResponse.data
-                        : (countriesResponse.data.data || []);
-                    
-                    const formattedCountries = countriesData.map(country => ({
-                        id: country._id || country.id,
-                        name: country.name,
-                        slug: country.slug || country.name.toLowerCase().replace(/\s+/g, '-')
-                    }));
-                    
-                    console.log('Formatted countries:', formattedCountries);
-                    setCountries(formattedCountries);
-                }
+                // Format countries data
+                const formattedCountries = countriesData.map(country => ({
+                    id: country._id || country.id || Math.random().toString(36).substr(2, 9),
+                    name: country.name || country.country_name || 'Unknown',
+                    slug: (country.slug || country.slug_url || '').trim() || 
+                          (country.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                })).filter(country => country.name !== 'Unknown');
+                
+                console.log('Formatted countries:', formattedCountries);
+                setCountries(formattedCountries);
             } catch (error) {
                 console.error('Error fetching data:', error);
                 // Set empty arrays on error
@@ -256,7 +246,7 @@ function Navbar() {
                                                         item.items.map((subItem) => (
                                                             <a
                                                                 key={subItem.id}
-                                                                href={`/${item.type}/${subItem.slug}`}
+                                                                href={`/the-loai/${subItem.id}/${subItem.slug}`}
                                                                 className="px-3 py-2 text-sm text-white hover:bg-[#333] rounded transition-colors whitespace-normal break-words"
                                                                 title={subItem.name}
                                                                 onClick={() => setActiveDropdown(null)}
@@ -374,6 +364,7 @@ function Navbar() {
                                 <a
                                     href={item.path}
                                     className="block text-white text-base [font-family:'Inter-Regular',Helvetica] hover:opacity-80 py-3 px-2"
+                                    onClick={() => setActiveDropdown(null)}
                                 >
                                     {item.label}
                                 </a>
@@ -415,13 +406,9 @@ function Navbar() {
                                                     {item.items.map((subItem) => (
                                                         <a
                                                             key={subItem.id}
-                                                            href={`/${item.type}/${subItem.slug}`}
-                                                            className="px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#2a2a2a] rounded-md transition-colors whitespace-normal break-all"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setActiveDropdown(null);
-                                                                setIsMobileMenuOpen(false);
-                                                            }}
+                                                            href={`/the-loai/${subItem.id}/${subItem.slug}`}
+                                                            className="block text-sm text-gray-300 hover:text-white hover:bg-[#333] px-4 py-2 rounded transition-colors"
+                                                            onClick={() => setActiveDropdown(null)}
                                                         >
                                                             {subItem.name}
                                                         </a>

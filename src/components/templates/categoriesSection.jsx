@@ -10,26 +10,41 @@ function CategoriesSection() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await getCategories()
-        console.log('Categories Response:', response.data)
-        console.log('Full Response:', response)
+        setLoading(true);
+        const response = await getCategories();
         
-        // Lấy danh sách thể loại từ response - thử nhiều cấu trúc khác nhau
-        const categoriesData = response.data.data?.items || 
-                              response.data.items || 
-                              response.data.data || 
-                              response.data || 
-                              []
+        // Log the full response for debugging
+        console.log('Categories API Response:', response);
         
-        console.log('Categories Data:', categoriesData)
-        console.log('Categories Length:', categoriesData.length)
+        // Handle different possible response structures
+        let categoriesData = [];
         
-        setCategories(categoriesData)
-        setLoading(false)
+        if (Array.isArray(response)) {
+          // If the response is already an array
+          categoriesData = response;
+        } else if (response && response.data) {
+          // Handle nested data structure
+          if (Array.isArray(response.data)) {
+            categoriesData = response.data;
+          } else if (response.data.items && Array.isArray(response.data.items)) {
+            categoriesData = response.data.items;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            categoriesData = response.data.data;
+          }
+        } else if (response && response.items && Array.isArray(response.items)) {
+          categoriesData = response.items;
+        }
+        
+        console.log('Processed Categories Data:', categoriesData);
+        setCategories(categoriesData || []);
+        setError(null);
       } catch (err) {
-        console.error('Error fetching categories:', err)
-        setError(err)
-        setLoading(false)
+        console.error('Error fetching categories:', err);
+        console.error('Error details:', err.message);
+        setError(err);
+        setCategories([]); // Ensure we have an empty array on error
+      } finally {
+        setLoading(false);
       }
     }
 

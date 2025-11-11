@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { StarIcon } from '@heroicons/react/24/solid';
 
+// Default poster SVG as a data URL
+const DEFAULT_POSTER_SVG = `data:image/svg+xml,%3Csvg width='400' height='600' viewBox='0 0 400 600' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='600' fill='%23E5E7EB'/%3E%3Cpath d='M100 250L150 200L200 250L250 200L300 250V350H100V250Z' fill='%239CA3AF'/%3E%3Ccircle cx='200' cy='150' r='50' fill='%239CA3AF'/%3E%3Ctext x='200' y='500' text-anchor='middle' font-family='Arial' font-size='20' fill='%236B7280'%3ENo image%3C/text%3E%3C/svg%3E`;
+
 // In-memory cache for loaded images
 const imageCache = new Map();
 
@@ -61,13 +64,13 @@ function MovieCard({ id, title, posterPath, releaseDate, rating, mediaType = 'mo
 
   // Generate low and high resolution image URLs
   const processImageUrl = useCallback((path) => {
-    if (!path) return { lowRes: null, highRes: null };
+    if (!path) return { lowRes: DEFAULT_POSTER_SVG, highRes: DEFAULT_POSTER_SVG };
 
     try {
       // If it's an object, try to get the URL from common properties
       if (typeof path === 'object' && path !== null) {
         path = path.original || path.large || path.medium || path.small || path.full || (Array.isArray(path) ? path[0] : null);
-        if (!path) return { lowRes: null, highRes: null };
+        if (!path) return { lowRes: DEFAULT_POSTER_SVG, highRes: DEFAULT_POSTER_SVG };
       }
 
       // If it's a string, handle different URL formats
@@ -120,21 +123,54 @@ function MovieCard({ id, title, posterPath, releaseDate, rating, mediaType = 'mo
       console.error('Error processing image URL:', error);
     }
 
-    return { lowRes: null, highRes: null };
+    return { lowRes: DEFAULT_POSTER_SVG, highRes: DEFAULT_POSTER_SVG };
   }, []);
+
+  // Handle image error
+  const handleImageError = useCallback(() => {
+    setLowResImage(DEFAULT_POSTER_SVG);
+    setHighResImage(DEFAULT_POSTER_SVG);
+    setImageLoaded(true);
+    setImageError(true);
+  }, []);
+
+  // Handle image load
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+    setImageError(false);
+    
+    // Cache the loaded image (only if it's not the default image)
+    if (lowResImage && lowResImage !== DEFAULT_POSTER_SVG) imageCache.set(lowResImage, true);
+    if (highResImage && highResImage !== DEFAULT_POSTER_SVG) imageCache.set(highResImage, true);
+  }, [lowResImage, highResImage]);
 
   // Process image URLs when posterPath changes
   useEffect(() => {
+    if (!posterPath) {
+      setLowResImage(DEFAULT_POSTER_SVG);
+      setHighResImage(DEFAULT_POSTER_SVG);
+      setImageLoaded(true);
+      setImageError(false);
+      return;
+    }
+
     const { lowRes, highRes } = processImageUrl(posterPath);
-    setLowResImage(lowRes);
-    setHighResImage(highRes);
     
-    // Reset loading states
+    if (!lowRes && !highRes) {
+      setLowResImage(DEFAULT_POSTER_SVG);
+      setHighResImage(DEFAULT_POSTER_SVG);
+      setImageLoaded(true);
+      setImageError(false);
+      return;
+    }
+    
+    setLowResImage(lowRes || DEFAULT_POSTER_SVG);
+    setHighResImage(highRes || lowRes || DEFAULT_POSTER_SVG);
     setImageLoaded(false);
-    setImageError(!lowRes && !highRes);
+    setImageError(false);
     
     // Check if image is already in cache
-    if (lowRes && imageCache.has(lowRes)) {
+    if ((lowRes && imageCache.has(lowRes)) || (highRes && imageCache.has(highRes))) {
       setImageLoaded(true);
       setImageError(false);
     }

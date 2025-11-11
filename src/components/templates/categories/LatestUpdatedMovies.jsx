@@ -141,40 +141,47 @@ const LatestUpdatedMovies = () => {
                 console.log('API Response:', response);
 
                 let moviesData = [];
-                const responseData = response?.data;
 
                 // Handle different response structures
-                if (Array.isArray(responseData)) {
-                    // Case 1: Response data is already an array
-                    moviesData = responseData;
-                } else if (responseData?.data) {
-                    // Case 2: Response has a data property that might be an array or contain an array
-                    if (Array.isArray(responseData.data)) {
-                        moviesData = responseData.data;
-                    } else if (responseData.data.items && Array.isArray(responseData.data.items)) {
-                        moviesData = responseData.data.items;
-                    } else if (responseData.data.data && Array.isArray(responseData.data.data)) {
-                        moviesData = responseData.data.data;
+                if (Array.isArray(response)) {
+                    // Case 1: Response is already an array
+                    moviesData = response;
+                } else if (response && typeof response === 'object') {
+                    // Case 2: Response is an object with possible data/items properties
+                    if (Array.isArray(response.items)) {
+                        moviesData = response.items;
+                    } else if (response.data) {
+                        if (Array.isArray(response.data)) {
+                            moviesData = response.data;
+                        } else if (response.data.items && Array.isArray(response.data.items)) {
+                            moviesData = response.data.items;
+                        }
                     }
-                } else if (responseData?.items && Array.isArray(responseData.items)) {
-                    // Case 3: Response has an items array
-                    moviesData = responseData.items;
                 }
 
-                console.log('Extracted movies data:', moviesData);
+                console.log('Processed movies data:', moviesData);
 
-                if (moviesData.length === 0) {
-                    throw new Error('Không tìm thấy phim nào');
+                if (!moviesData || moviesData.length === 0) {
+                    console.warn('No movies found in the response');
+                    // Instead of throwing an error, set an empty array and show a message
+                    setMovies([]);
+                    setError({
+                        message: 'Hiện chưa có phim nào',
+                        details: 'Vui lòng quay lại sau'
+                    });
+                    return;
                 }
 
                 setMovies(moviesData);
+                setError(null);
 
             } catch (err) {
                 console.error('Error fetching latest movies:', err);
                 setError({
                     message: 'Không thể tải danh sách phim',
-                    details: err.response?.data?.message || err.message || 'Vui lòng thử lại sau.'
+                    details: err.message || 'Vui lòng thử lại sau.'
                 });
+                setMovies([]);
             } finally {
                 setLoading(false);
             }

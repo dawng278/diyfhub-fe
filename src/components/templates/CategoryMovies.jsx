@@ -16,13 +16,24 @@ axios.interceptors.response.use(
   }
 );
 
-function CategoryMovies() {
-  const { categoryId, categoryName } = useParams();
+const CategoryMovies = () => {
+  const { categoryId, categoryName: categoryNameParam } = useParams();
+  const [categoryName] = useState(() => {
+    return decodeURIComponent(categoryNameParam || 'Thể loại');
+  });
   const navigate = useNavigate();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const scrollContainerRef = useRef(null);
+  
+  // Function to retry fetching movies
+  const retryFetch = () => {
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    setLoading(true);
+  };
 
   const scroll = (direction) => {
     if (scrollContainerRef.current) {
@@ -39,77 +50,102 @@ function CategoryMovies() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchMoviesByCategory = async () => {
+      if (!isMounted) return;
       try {
         setLoading(true);
-        console.log('Fetching category with ID/Slug:', categoryId);
+        console.log('Fetching category with ID/Slug:', categoryId, 'Name:', categoryName);
         
-        // First, get all categories to find the category details
-        console.log('Fetching all categories...');
-        const categoriesResponse = await axios.get('/api/the-loai');
-        console.log('Categories response:', categoriesResponse.data);
-        
-        // Find the category by ID or slug
-        const category = categoriesResponse.data.data?.find(cat => 
-          String(cat.id) === String(categoryId) || cat.slug === categoryId
-        );
-        
-        console.log('Found category:', category);
-        
-        if (!category) {
-          throw new Error(`Không tìm thấy thể loại với ID/Slug: ${categoryId}`);
+        if (!categoryId) {
+          throw new Error('Không tìm thấy ID thể loại');
         }
         
-        // Update the category name in the URL if it's different
-        if (categoryName !== category.name) {
-          navigate(`/category/${category.id}/${encodeURIComponent(category.name)}`, { replace: true });
-        }
+        // Try different API endpoints and parameters
+        const endpoints = [
+          // Try with ID first
+          `/api/the-loai/${categoryId}`,
+          // Try with category name if available
+          categoryName && `/api/the-loai/${encodeURIComponent(categoryName.toLowerCase())}`,
+          // Try with different pagination
+          `/api/the-loai/${categoryId}?page=1&limit=50`
+        ].filter(Boolean); // Remove any undefined endpoints
+
+        let lastError = null;
         
-        // Then get movies by category slug
-        const apiUrl = `/api/the-loai/${category.slug || category.id}`;
-        console.log('Fetching movies from:', apiUrl);
-        
-        const response = await axios.get(apiUrl, {
-          params: { 
-            limit: 20,
-            page: 1
+        // Try each endpoint until we get movies or run out of endpoints
+        for (const endpoint of endpoints) {
+          try {
+            console.log('Trying endpoint:', endpoint);
+            const response = await axios.get(endpoint, {
+              params: { 
+                _t: Date.now() // Cache buster
+              },
+              timeout: 8000, // 8 second timeout
+              validateStatus: (status) => status < 500 // Don't reject on 404
+            });
+            
+            if (!isMounted) return;
+            
+            console.log('API Response from', endpoint, ':', response.data);
+            
+            // Try different response structures
+            const responseData = response.data;
+            let moviesData = [];
+            
+            // Check different possible response structures
+            if (responseData?.data?.data) {
+              moviesData = responseData.data.data;
+            } else if (responseData?.data?.items) {
+              moviesData = responseData.data.items;
+            } else if (responseData?.data) {
+              moviesData = Array.isArray(responseData.data) ? responseData.data : [];
+            } else if (Array.isArray(responseData)) {
+              moviesData = responseData;
+            } else if (responseData?.items) {
+              moviesData = responseData.items;
+            } else if (responseData?.data?.movies) {
+              moviesData = responseData.data.movies;
+            }
+            
+            if (moviesData?.length > 0) {
+              console.log(`Found ${moviesData.length} movies for category:`, categoryName);
+              setMovies(moviesData);
+              setError(null);
+              return; // Exit if we found movies
+            }
+            
+          } catch (err) {
+            console.error('Error with endpoint', endpoint, ':', err.message);
+            lastError = err;
+            // Continue to next endpoint
           }
+        }
+        
+        // If we get here, no endpoint worked
+        const errorMessage = lastError?.response?.data?.message || 
+                           `Không tìm thấy phim nào trong thể loại "${categoryName}"`;
+        
+        console.warn('No movies found after trying all endpoints:', {
+          categoryId,
+          categoryName,
+          lastError: lastError?.message,
+          response: lastError?.response?.data,
+          endpointsTried: endpoints
         });
         
-        console.log('Movies API Response:', response.data);
-        
-        // Handle the response structure from the API
-        let moviesData = [];
-        const responseData = response.data;
-        
-        console.log('Raw response data:', responseData);
-        
-        // The API returns data in responseData.data.data
-        if (responseData?.data?.data) {
-          moviesData = responseData.data.data;
-        } 
-        // Fallback to other possible structures
-        else if (responseData?.data?.items) {
-          moviesData = responseData.data.items;
-        } 
-        else if (responseData?.data) {
-          moviesData = Array.isArray(responseData.data) ? responseData.data : [];
-        } 
-        else if (Array.isArray(responseData)) {
-          moviesData = responseData;
-        } 
-        else if (responseData?.items) {
-          moviesData = responseData.items;
+        if (retryCount < 2) {
+          console.log(`Retrying... Attempt ${retryCount + 1}/2`);
+          setTimeout(() => retryFetch(), 1500);
+          return;
         }
         
-        if (moviesData.length === 0) {
-          console.warn('No movies found in the response');
-        } else {
-          console.log(`Found ${moviesData.length} movies`);
-        }
-        
-        setMovies(moviesData || []);
-        setError(null);
+        setError({
+          message: errorMessage,
+          canRetry: true,
+          details: lastError?.response?.data || lastError?.message
+        });
       } catch (err) {
         console.error('Error fetching movies by category:', {
           message: err.message,
@@ -120,7 +156,25 @@ function CategoryMovies() {
             params: err.config?.params
           }
         });
-        setError(`Lỗi: ${err.message || 'Không thể tải danh sách phim. Vui lòng thử lại sau.'}`);
+        const errorMessage = `Lỗi: ${err.message || 'Không thể tải danh sách phim'}`;
+        console.error('API Error:', {
+          message: err.message,
+          code: err.code,
+          status: err.response?.status,
+          url: err.config?.url
+        });
+        
+        if (retryCount < 2 && !err.response) {
+          console.log(`Retrying... Attempt ${retryCount + 1}/2`);
+          setTimeout(() => retryFetch(), 1000);
+          return;
+        }
+        
+        setError({
+          message: errorMessage,
+          canRetry: true,
+          details: err.response?.data || err.message
+        });
       } finally {
         setLoading(false);
       }
@@ -129,11 +183,17 @@ function CategoryMovies() {
     if (categoryId) {
       fetchMoviesByCategory();
     } else {
-      // If no categoryId, try to fetch from props or context
-      // You can add additional logic here if needed
+      setError({
+        message: 'Không tìm thấy ID thể loại',
+        canRetry: false
+      });
       setLoading(false);
     }
-  }, [categoryId]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [categoryId, categoryName, navigate, retryCount]);
 
   if (loading) {
     return (
@@ -141,7 +201,7 @@ function CategoryMovies() {
         <div className="container mx-auto px-4">
           <div className="flex items-center mb-6">
             <h1 className="text-2xl md:text-3xl font-bold">
-              Đang tải {categoryName || 'thể loại'}...
+              {categoryName ? `Đang tải phim thể loại ${categoryName}...` : 'Đang tải danh sách phim...'}
             </h1>
           </div>
           <div className="flex items-center justify-center h-64">
@@ -153,25 +213,63 @@ function CategoryMovies() {
   }
 
   if (error) {
+    const isNotFound = error.includes('Không tìm thấy');
+    const isNetworkError = error.includes('Network Error') || error.includes('timeout');
+    
     return (
-      <div className="bg-gray-900 text-white py-6">
+      <div className="bg-gray-900 text-white py-6 min-h-screen">
         <div className="container mx-auto px-4">
-          <div className="bg-red-900/30 border border-red-500 rounded-lg p-4">
-            <h3 className="text-xl font-bold text-red-400 mb-2">Đã xảy ra lỗi</h3>
-            <p className="text-red-300 mb-4">{error}</p>
-            <div className="bg-black/50 p-3 rounded text-sm text-gray-300 mb-4 overflow-x-auto">
-              <pre>{JSON.stringify({
-                categoryId,
-                categoryName,
-                timestamp: new Date().toISOString()
-              }, null, 2)}</pre>
+          <div className="text-center py-12">
+            <div className="w-20 h-20 mx-auto mb-6 text-red-500">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-            >
-              Thử lại
-            </button>
+            <h2 className="text-2xl font-bold text-red-500 mb-4">
+              {isNotFound ? 'Không tìm thấy thể loại' : 'Đã xảy ra lỗi'}
+            </h2>
+            <div className="text-gray-300 max-w-2xl mx-auto mb-8 space-y-4">
+              <p>
+                {isNotFound 
+                  ? `Không tìm thấy thể loại với ID/Slug: ${categoryId}`
+                  : isNetworkError
+                    ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.'
+                    : error}
+              </p>
+              
+              {(isNotFound || isNetworkError) && (
+                <div className="mt-4 text-sm bg-gray-800/50 p-4 rounded-lg">
+                  <p className="mb-2">Bạn có thể thử:</p>
+                  <ul className="list-disc list-inside space-y-1 text-left max-w-md mx-auto">
+                    <li>Kiểm tra lại đường dẫn URL</li>
+                    <li>Quay lại trang danh sách thể loại để chọn thể loại khác</li>
+                    {isNetworkError && (
+                      <li>Kiểm tra kết nối mạng và thử lại</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white transition-colors"
+              >
+                Thử lại
+              </button>
+              <button 
+                onClick={() => navigate('/the-loai')}
+                className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-md text-white transition-colors"
+              >
+                Xem tất cả thể loại
+              </button>
+              <button 
+                onClick={() => navigate('/')}
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-800 rounded-md text-white transition-colors"
+              >
+                Về trang chủ
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -255,6 +353,6 @@ function CategoryMovies() {
       </div>
     </div>
   );
-}
+};
 
 export default CategoryMovies;

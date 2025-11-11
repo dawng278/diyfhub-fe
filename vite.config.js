@@ -14,5 +14,7 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  // Environment variables should be accessed via import.meta.env in Vite
+  // They need to be prefixed with VITE_ to be exposed to your Vite-processed code
 })
