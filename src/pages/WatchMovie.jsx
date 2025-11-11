@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/atoms/LoadingSpinner';
 import { getMovieBySlug } from '../services/apiService';
@@ -50,7 +50,7 @@ const WatchMovie = () => {
   };
 
   // Load movie data
-  const loadMovie = async () => {
+  const loadMovie = useCallback(async () => {
     if (!movieSlug) {
       console.error('No movieSlug provided');
       return;
@@ -140,14 +140,14 @@ const WatchMovie = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [movieSlug, episodeSlug, navigate]);
 
   // Load movie on mount
   useEffect(() => {
     console.log('useEffect triggered with:', { movieSlug, episodeSlug });
     loadMovie();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [movieSlug, episodeSlug]);
+  }, [movieSlug, episodeSlug, loadMovie]);
   
   // Handle episode change
   const handleEpisodeChange = (episode) => {
@@ -337,7 +337,7 @@ const WatchMovie = () => {
               </div>
               
               {/* Debug Info - Remove in production */}
-              {process.env.NODE_ENV === 'development' && (
+              {import.meta.env.MODE === 'development' && (
                 <div className="mt-4 p-4 bg-gray-800 rounded text-xs text-gray-300">
                   <p><strong>Debug Info:</strong></p>
                   <p>Episodes count: {episodes.length}</p>

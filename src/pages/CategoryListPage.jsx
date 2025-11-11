@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMoviesByCategory, getCategories, searchMovie } from '../services/apiService';
+import { getMoviesByCategory, getCategories, searchMovies } from '../services/apiService';
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/outline';
 import MovieGridCard from '../components/molecules/MovieGridCard';
 
@@ -133,7 +133,7 @@ const CategoryListPage = () => {
           });
         } else {
           // Nếu không tìm thấy category, thử tìm kiếm phim trực tiếp
-          response = await searchMovie({
+          response = await searchMovies({
             keyword: categoryName,
             limit: 100 // Fetch more to have enough for the 24-item limit
           });
