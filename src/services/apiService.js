@@ -175,25 +175,235 @@ export const getCategories = async () => {
  * @param {string} category - Category slug
  * @param {Object} [options={}] - Additional options
  * @param {number} [options.page=1] - Page number
- * @param {string} [options.sortField=_id] - Field to sort by
+ * @param {string} [options.sortField=modified.time] - Field to sort by
  * @param {string} [options.sortType=desc] - Sort direction (asc/desc)
- * @param {string} [options.sortLang=vietsub] - Language filter
  * @param {string} [options.country] - Country filter
  * @param {string} [options.year] - Year filter
  * @param {number} [options.limit=24] - Number of items per page
  */
-export const getMoviesByCategory = async (category, options = {}) => {
-  const params = new URLSearchParams({
-    page: options.page || 1,
-    sort_field: options.sortField || '_id',
-    sort_type: options.sortType || 'desc',
-    sort_lang: options.sortLang || 'vietsub',
-    ...(options.country && { country: options.country }),
-    ...(options.year && { year: options.year }),
-    limit: options.limit || 24,
-  }).toString();
+// Map of component names and Vietnamese names to their corresponding API slugs
+const CATEGORY_SLUG_MAP = {
+  // English component names
+  'action': 'hanh-dong',
+  'anime': 'hoat-hinh',
+  'adventure': 'phieu-luu',
+  'comedy': 'hai-huoc',
+  'romance': 'tinh-cam',
+  'drama': 'tam-ly',
+  'horror': 'kinh-di',
+  'scifi': 'khoa-hoc-vien-tuong',
+  'thriller': 'gay-can',
+  'war': 'chien-tranh',
+  'western': 'cao-boi',
+  'sports': 'the-thao',
+  'music': 'am-nhac',
+  'family': 'gia-dinh',
+  'fantasy': 'than-thoai',
+  'history': 'lich-su',
+  'mystery': 'bi-an',
+  'crime': 'hinh-su',
+  'documentary': 'tai-lieu',
+  'adult': '18+',
+  'latest': 'phim-moi-cap-nhat',
+  'children': 'thieu-nhi',
+  'classic': 'co-trang',
+  'school': 'hoc-duong',
+  'martialarts': 'vo-thuat',
+  'vietnam': 'viet-nam',
+  'korea': 'han-quoc',
+  'usuk': 'my',
+  'hongkong': 'hong-kong',
+  'japan': 'nhat-ban',
+  'thailand': 'thai-lan',
+  'europe': 'au-my',
+  'india': 'an-do',
+  
+  // Vietnamese names
+  'phim chien tranh': 'chien-tranh',
+  'phim the thao': 'the-thao',
+  'phim tinh cam': 'tinh-cam',
+  'phim hai huoc': 'hai-huoc',
+  'phim phieu luu': 'phieu-luu',
+  'phim tre em': 'thieu-nhi',
+  'phim kinh dien': 'co-trang',
+  'phim hinh su': 'hinh-su',
+  'phim tam ly': 'tam-ly',
+  'phim vo thuat': 'vo-thuat',
+  'phim co trang': 'co-trang',
+  'phim than thoai': 'than-thoai',
+  'phim hoat hinh': 'hoat-hinh',
+  'phim khoa hoc vien tuong': 'khoa-hoc-vien-tuong',
+  'phim am nhac': 'am-nhac',
+  'phim gia dinh': 'gia-dinh',
+  'phim lich su': 'lich-su',
+  'phim bi an': 'bi-an',
+  'phim tai lieu': 'tai-lieu',
+  'phim 18+': '18+',
+  'phim moi cap nhat': 'phim-moi-cap-nhat',
+  'phim thieu nhi': 'thieu-nhi',
+  'phim hoc duong': 'hoc-duong',
+  'phim viet nam': 'viet-nam',
+  'phim han quoc': 'han-quoc',
+  'phim my': 'my',
+  'phim hong kong': 'hong-kong',
+  'phim nhat ban': 'nhat-ban',
+  'phim thai lan': 'thai-lan',
+  'phim au my': 'au-my',
+  'phim an do': 'an-do',
+  
+  // Common misspellings and variations
+  'chien-tranh': 'chien-tranh',
+  'the-thao': 'the-thao',
+  'tinh-cam': 'tinh-cam',
+  'hai-huoc': 'hai-huoc',
+  'phieu-luu': 'phieu-luu',
+  'thieu-nhi': 'thieu-nhi',
+  'co-trang': 'co-trang',
+  'hinh-su': 'hinh-su',
+  'tam-ly': 'tam-ly',
+  'vo-thuat': 'vo-thuat',
+  'than-thoai': 'than-thoai',
+  'hoat-hinh': 'hoat-hinh',
+  'khoa-hoc-vien-tuong': 'khoa-hoc-vien-tuong',
+  'am-nhac': 'am-nhac',
+  'gia-dinh': 'gia-dinh',
+  'lich-su': 'lich-su',
+  'bi-an': 'bi-an',
+  'tai-lieu': 'tai-lieu',
+  '18+': '18+',
+  'phim-moi-cap-nhat': 'phim-moi-cap-nhat',
+  'hoc-duong': 'hoc-duong',
+  'viet-nam': 'viet-nam',
+  'han-quoc': 'han-quoc',
+  'my': 'my',
+  'hong-kong': 'hong-kong',
+  'nhat-ban': 'nhat-ban',
+  'thai-lan': 'thai-lan',
+  'au-my': 'au-my',
+  'an-do': 'an-do'
+};
 
-  return fetchApi(`${PHIM_API_URL}/v1/api/the-loai/${category}?${params}`);
+// Helper function to clean and normalize category names
+const cleanCategoryName = (name) => {
+  if (!name) return '';
+  // Convert to lowercase and trim
+  let cleaned = name.toString().toLowerCase().trim();
+  // Remove 'phim' prefix if present
+  cleaned = cleaned.replace(/^phim\s+/, '');
+  // Remove diacritics (accents)
+  cleaned = cleaned.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Replace multiple spaces with single dash
+  cleaned = cleaned.replace(/\s+/g, '-');
+  // Remove any remaining special characters
+  cleaned = cleaned.replace(/[^a-z0-9-]/g, '');
+  return cleaned;
+};
+
+export const getMoviesByCategory = async (category, options = {}) => {
+  try {
+    console.log('Original category:', category);
+    
+    // Clean and normalize the category name
+    const cleanedCategory = cleanCategoryName(category);
+    
+    // Try to find a matching slug in our mapping
+    let categorySlug = CATEGORY_SLUG_MAP[cleanedCategory] || 
+                      CATEGORY_SLUG_MAP[category.toLowerCase()] || 
+                      cleanedCategory;
+    
+    // If we still don't have a match, try to find a partial match
+    if (!CATEGORY_SLUG_MAP[cleanedCategory]) {
+      const matchingKey = Object.keys(CATEGORY_SLUG_MAP).find(key => 
+        cleanedCategory.includes(key) || key.includes(cleanedCategory)
+      );
+      if (matchingKey) {
+        categorySlug = CATEGORY_SLUG_MAP[matchingKey];
+      }
+    }
+    
+    console.log('Cleaned category:', cleanedCategory);
+    console.log('Mapped category slug:', categorySlug);
+    
+    const params = new URLSearchParams({
+      page: options.page || 1,
+      limit: options.limit || 24,
+      sort_field: options.sortField || 'modified.time',
+      sort_type: options.sortType || 'desc',
+      ...(options.country && { country: options.country }),
+      ...(options.year && { year: options.year }),
+    }).toString();
+
+    // Try different endpoint variations
+    const endpoints = [
+      // Try with the mapped slug first
+      `${PHIM_API_URL}/v1/api/the-loai/${categorySlug}?${params}`,
+      // Try with the original category name
+      `${PHIM_API_URL}/v1/api/the-loai/${category}?${params}`,
+      // Try with 'phim-' prefix
+      `${PHIM_API_URL}/v1/api/danh-sach/phim-${categorySlug}?${params}`,
+      // Try with 'the-loai-' prefix
+      `${PHIM_API_URL}/v1/api/danh-sach/the-loai-${categorySlug}?${params}`,
+    ];
+
+    let lastError = null;
+    
+    for (const url of endpoints) {
+      try {
+        console.log('Trying endpoint:', url);
+        const response = await fetchApi(url);
+        console.log('API Response from', url, ':', response);
+
+        let items = [];
+        let pagination = {};
+        
+        // Handle different response formats
+        if (response?.data?.items) {
+          items = response.data.items;
+          pagination = response.data.params?.pagination || {};
+        } else if (Array.isArray(response)) {
+          items = response;
+        } else if (response?.items) {
+          items = response.items;
+          pagination = response.pagination || {};
+        } else if (response?.data && Array.isArray(response.data)) {
+          items = response.data;
+          pagination = response.pagination || {};
+        }
+
+        if (items && items.length > 0) {
+          console.log(`Found ${items.length} items for category ${categorySlug}`);
+          return {
+            data: items,
+            pagination: {
+              totalItems: pagination.totalItems || items.length,
+              totalPages: pagination.totalPages || 1,
+              currentPage: pagination.currentPage || (options.page || 1),
+              totalItemsPerPage: pagination.totalItemsPerPage || (options.limit || 24)
+            }
+          };
+        }
+      } catch (error) {
+        console.warn(`Attempt failed for ${url}:`, error.message);
+        lastError = error;
+        continue;
+      }
+    }
+    
+    // If we get here, all endpoints failed
+    throw lastError || new Error(`No data found for category: ${category}`);
+    
+  } catch (error) {
+    console.error('Error in getMoviesByCategory:', error);
+    return { 
+      data: [], 
+      pagination: { 
+        totalItems: 0, 
+        totalPages: 1, 
+        currentPage: options.page || 1, 
+        totalItemsPerPage: options.limit || 24 
+      } 
+    };
+  }
 };
 
 /**
@@ -205,21 +415,21 @@ export const getMoviesByCategory = async (category, options = {}) => {
  */
 export const getRelatedMovies = async (categoryId, excludeMovieId, limit = 6) => {
   if (!categoryId) {
-    return { data: { items: [] } };
+    return { data: [], pagination: { totalItems: 0, totalPages: 1 } };
   }
 
   try {
     const response = await getMoviesByCategory(categoryId, {
       limit,
       exclude: excludeMovieId,
-      sortField: 'updatedAt',
+      sortField: 'modified.time',
       sortType: 'desc'
     });
 
-    return response || { data: { items: [] } };
+    return response || { data: [], pagination: { totalItems: 0, totalPages: 1 } };
   } catch (error) {
     console.error('Error fetching related movies:', error);
-    return { data: { items: [] } };
+    return { data: [], pagination: { totalItems: 0, totalPages: 1 } };
   }
 };
 
@@ -235,28 +445,56 @@ export const getCountries = async () => {
 
 /**
  * Get movies by country
- * @param {string} country - Country slug
+ * @param {string} country - Country slug (e.g., 'trung-quoc')
  * @param {Object} [options={}] - Additional options
  * @param {number} [options.page=1] - Page number
- * @param {string} [options.sortField=_id] - Field to sort by
+ * @param {string} [options.sortField=modified.time] - Field to sort by
  * @param {string} [options.sortType=desc] - Sort direction (asc/desc)
- * @param {string} [options.sortLang=vietsub] - Language filter
- * @param {string} [options.category] - Category filter
- * @param {string} [options.year] - Year filter
  * @param {number} [options.limit=24] - Number of items per page
  */
 export const getMoviesByCountry = async (country, options = {}) => {
-  const params = new URLSearchParams({
-    page: options.page || 1,
-    sort_field: options.sortField || '_id',
-    sort_type: options.sortType || 'desc',
-    sort_lang: options.sortLang || 'vietsub',
-    ...(options.category && { category: options.category }),
-    ...(options.year && { year: options.year }),
-    limit: options.limit || 24,
-  }).toString();
+  try {
+    console.log('Fetching movies for country:', country);
+    
+    const params = new URLSearchParams({
+      page: options.page || 1,
+      limit: options.limit || 24,
+      sort_field: options.sortField || 'modified.time',
+      sort_type: options.sortType === 'asc' ? 'asc' : 'desc',
+    }).toString();
 
-  return fetchApi(`${PHIM_API_URL}/v1/api/quoc-gia/${country}?${params}`);
+    // Correct endpoint: /v1/api/quoc-gia/{country-slug}
+    const url = `${PHIM_API_URL}/v1/api/quoc-gia/${country}?${params}`;
+    console.log('API Request URL:', url);
+    
+    const response = await fetchApi(url);
+    console.log('Raw API Response:', response);
+    
+    // API structure: { status: "success", data: { items: [...], params: { pagination: {...} } } }
+    if (response && response.status === 'success' && response.data) {
+      const items = response.data.items || [];
+      const pagination = response.data.params?.pagination || {};
+      
+      console.log('Parsed items:', items.length);
+      console.log('Parsed pagination:', pagination);
+      
+      return {
+        data: items,
+        pagination: {
+          totalItems: pagination.totalItems || 0,
+          totalPages: pagination.totalPages || 1,
+          currentPage: pagination.currentPage || (options.page || 1),
+          totalItemsPerPage: pagination.totalItemsPerPage || (options.limit || 24)
+        }
+      };
+    }
+    
+    console.error('Unexpected API response structure:', response);
+    return { data: [], pagination: { totalItems: 0, totalPages: 1, currentPage: 1 } };
+  } catch (error) {
+    console.error('Error in getMoviesByCountry:', error);
+    return { data: [], pagination: { totalItems: 0, totalPages: 1, currentPage: 1 } };
+  }
 };
 
 /**
@@ -264,9 +502,8 @@ export const getMoviesByCountry = async (country, options = {}) => {
  * @param {string|number} year - Release year
  * @param {Object} [options={}] - Additional options
  * @param {number} [options.page=1] - Page number
- * @param {string} [options.sortField=_id] - Field to sort by
+ * @param {string} [options.sortField=modified.time] - Field to sort by
  * @param {string} [options.sortType=desc] - Sort direction (asc/desc)
- * @param {string} [options.sortLang=vietsub] - Language filter
  * @param {string} [options.category] - Category filter
  * @param {string} [options.country] - Country filter
  * @param {number} [options.limit=24] - Number of items per page
@@ -274,9 +511,8 @@ export const getMoviesByCountry = async (country, options = {}) => {
 export const getMoviesByYear = async (year, options = {}) => {
   const params = new URLSearchParams({
     page: options.page || 1,
-    sort_field: options.sortField || '_id',
+    sort_field: options.sortField || 'modified.time',
     sort_type: options.sortType || 'desc',
-    sort_lang: options.sortLang || 'vietsub',
     ...(options.category && { category: options.category }),
     ...(options.country && { country: options.country }),
     limit: options.limit || 24,
@@ -293,7 +529,7 @@ export const getMoviesByYear = async (year, options = {}) => {
 export const getImageUrl = (imageUrl) => {
   if (!imageUrl) return null;
   if (imageUrl.startsWith('http')) return imageUrl;
-  return `https://phimapi.com/image.php?url=${encodeURIComponent(imageUrl)}`;
+  return `https://img.phimapi.com/${imageUrl}`;
 };
 
 // Backward compatibility

@@ -243,17 +243,25 @@ function Navbar() {
                                             <div className={`dropdown-container absolute left-0 mt-2 w-full lg:w-auto lg:min-w-[300px] bg-[#1a1a1a] rounded shadow-lg p-3 z-50 ${isMobile ? 'fixed inset-x-4 top-1/2 -translate-y-1/2 max-h-[80vh] overflow-y-auto' : ''}`}>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {item.items && item.items.length > 0 ? (
-                                                        item.items.map((subItem) => (
-                                                            <a
-                                                                key={subItem.id}
-                                                                href={`/the-loai/${subItem.id}/${subItem.slug}`}
-                                                                className="px-3 py-2 text-sm text-white hover:bg-[#333] rounded transition-colors whitespace-normal break-words"
-                                                                title={subItem.name}
-                                                                onClick={() => setActiveDropdown(null)}
-                                                            >
-                                                                {subItem.name}
-                                                            </a>
-                                                        ))
+                                                        item.items.map((subItem) => {
+                                                            const href = item.type === 'country' 
+                                                                ? `/quoc-gia/${subItem.slug}/${encodeURIComponent(subItem.name)}`
+                                                                : `/the-loai/${subItem.id}/${subItem.slug}`;
+                                                            return (
+                                                                <a
+                                                                    key={subItem.id}
+                                                                    href={href}
+                                                                    className="px-3 py-2 text-sm text-white hover:bg-[#333] rounded transition-colors whitespace-normal break-words"
+                                                                    title={subItem.name}
+                                                                    onClick={() => setActiveDropdown(null)}
+                                                                >
+                                                                    {subItem.name}
+                                                                    {item.type === 'country' && subItem.movieCount && (
+                                                                        <span className="ml-1 text-gray-400 text-xs">({subItem.movieCount})</span>
+                                                                    )}
+                                                                </a>
+                                                            );
+                                                        })
                                                     ) : (
                                                         <div className="col-span-2 px-3 py-2 text-sm text-gray-400">Đang tải...</div>
                                                     )}
@@ -403,16 +411,24 @@ function Navbar() {
                                         >
                                             {item.items && item.items.length > 0 ? (
                                                 <div className="grid grid-cols-2 gap-2 py-2">
-                                                    {item.items.map((subItem) => (
-                                                        <a
-                                                            key={subItem.id}
-                                                            href={`/the-loai/${subItem.id}/${subItem.slug}`}
-                                                            className="block text-sm text-gray-300 hover:text-white hover:bg-[#333] px-4 py-2 rounded transition-colors"
-                                                            onClick={() => setActiveDropdown(null)}
-                                                        >
-                                                            {subItem.name}
-                                                        </a>
-                                                    ))}
+                                                    {item.items.map((subItem) => {
+                                                        const href = item.type === 'country' 
+                                                            ? `/quoc-gia/${subItem.slug}/${encodeURIComponent(subItem.name)}`
+                                                            : `/the-loai/${subItem.id}/${subItem.slug}`;
+                                                        return (
+                                                            <a
+                                                                key={subItem.id}
+                                                                href={href}
+                                                                className="block text-sm text-gray-300 hover:text-white hover:bg-[#333] px-4 py-2 rounded transition-colors"
+                                                                onClick={() => setActiveDropdown(null)}
+                                                            >
+                                                                {subItem.name}
+                                                                {item.type === 'country' && subItem.movieCount && (
+                                                                    <span className="ml-1 text-gray-400 text-xs">({subItem.movieCount})</span>
+                                                                )}
+                                                            </a>
+                                                        );
+                                                    })}
                                                 </div>
                                             ) : (
                                                 <div className="px-3 py-2 text-sm text-gray-400">Đang tải...</div>

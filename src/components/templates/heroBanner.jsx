@@ -139,7 +139,7 @@ function HeroBanner() {
 
               {/* Description */}
               <p className="hidden md:block text-white/90 text-sm md:text-base leading-relaxed line-clamp-2 md:line-clamp-3 drop-shadow-lg text-center md:text-left">
-                {movie.description || 'Không có mô tả'}
+                {movie.content || 'Không có mô tả'}
               </p>
 
               {/* Action Buttons */}

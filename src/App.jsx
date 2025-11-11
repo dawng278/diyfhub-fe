@@ -5,9 +5,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 const HomePage = lazy(() => import('./pages/homePage'));
 const CategoryListPage = lazy(() => import('./pages/CategoryListPage'));
 const CategoryMovies = lazy(() => import('./components/templates/CategoryMovies.jsx'));
+const MoviesGridByCountry = lazy(() => import('./components/templates/MoviesGridByCountry.jsx'));
 const MovieDetailPage = lazy(() => import('./pages/MovieDetail'));
 import WatchMovie from './pages/WatchMovie';
-import MoviesGrid from './components/templates/MoviesGrid.jsx';
+import MoviesGridByCategory from './components/templates/MoviesGridByCategory.jsx';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -45,7 +46,10 @@ function App() {
           
           {/* Category routes */}
           <Route path="/the-loai" element={<CategoryListPage />} />
-          <Route path="/the-loai/:categoryId/:categoryName" element={<MoviesGrid />} />
+          <Route path="/the-loai/:categoryId/:categoryName" element={<MoviesGridByCategory />} />
+          
+          {/* Country routes */}
+          <Route path="/quoc-gia/:countrySlug/:countryName" element={<MoviesGridByCountry />} />
           
           {/* Movie detail routes */}
           <Route path="/movie/:movieSlug" element={<MovieDetailPage />} />

@@ -65,7 +65,9 @@ function MoviesByCountry() {
         const moviesData = {}
         responses.forEach((response, index) => {
           const slug = countries[index].slug
-          const items = response.data.data?.items || response.data.items || []
+          // Handle both old and new API response formats
+          const items = Array.isArray(response.data) ? response.data : 
+                       (response.data?.data || response.data?.items || [])
           moviesData[slug] = items
         })
         

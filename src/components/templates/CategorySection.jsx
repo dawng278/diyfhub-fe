@@ -4,6 +4,27 @@ import { getMoviesByCategory, getMoviesByCountry } from '../../services/apiServi
 import MovieCard from '../molecules/MovieCard';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
+// Helper function to get the best available image URL
+const getImageUrl = (movie) => {
+  if (!movie) return null;
+  
+  // Try different possible image fields in order of preference
+  const imagePath = movie.poster_url || 
+                   movie.thumb_url || 
+                   movie.poster_path ||
+                   movie.thumbnail ||
+                   (movie.thumb?.medium || movie.thumb?.large || movie.thumb) ||
+                   movie.thumbnail_medium || 
+                   movie.thumbnail_large;
+
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Clean up the path and construct URL
+  const cleanPath = imagePath.replace(/^\/+/, '');
+  return `https://img.phimapi.com/${cleanPath}`;
+};
+
 // Cache configuration
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const getCacheKey = (categoryId, apiPath) => `cache_${apiPath}_${categoryId}`;
@@ -219,25 +240,34 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
               </div>
             ) : Array.isArray(movies) && movies.length > 0 ? (
               movies.map((movie, index) => {
-                const posterPath = movie.poster_url || movie.thumb_url || movie.poster_path ||
-                  (movie.thumb?.medium || movie.thumb?.large || movie.thumb) ||
-                  movie.thumbnail || movie.thumbnail_medium || movie.thumbnail_large;
+                const imageUrl = getImageUrl(movie);
+                if (!imageUrl) {
+                  console.warn('No valid image URL for movie:', movie.id || movie._id, movie.title || movie.name);
+                  return null;
+                }
                 
-                if (!posterPath) return null;
+                const imdbRating = movie.tmdb?.vote_average || 
+                                 movie.rating || 
+                                 movie.vote_average || 
+                                 (movie.vote?.average) || 
+                                 (movie.quality ? parseFloat(movie.quality) : 0);
                 
-                const imdbRating = movie.tmdb?.vote_average || movie.quality || 
-                  movie.rating || movie.vote_average || (movie.vote?.average) || 0;
+                // Ensure we have a valid title
+                const title = movie.title || movie.name || 'Không có tiêu đề';
                 
                 return (
                   <div key={`${movie.id || movie._id || index}`} className="shrink-0 w-32 sm:w-50 snap-start">
                     <MovieCard
                       id={movie.id || movie._id}
-                      title={movie.title || movie.name || 'Không có tiêu đề'}
-                      posterPath={posterPath}
-                      releaseDate={movie.year || ''}
+                      title={title}
+                      posterPath={imageUrl}
+                      releaseDate={movie.year || movie.release_date?.substring(0, 4) || ''}
                       rating={imdbRating}
-                      mediaType={movie.media_type || 'movie'}
+                      mediaType={movie.media_type || (movie.episode_current ? 'tv' : 'movie')}
                       loading={loading}
+                      episodeCurrent={movie.episode_current}
+                      episodeTotal={movie.episode_total || movie.total_episodes}
+                      lang={movie.lang || 'vi'}
                     />
                   </div>
                 );
