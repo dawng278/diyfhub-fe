@@ -1,10 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import LogoVn from "../../assets/VN.svg";
 import logo from "../../assets/logo.svg";
 import tiktok from "../../assets/tiktok.svg";
 import facebook from "../../assets/facebook.svg";
-import youtube from "../../assets/youtube.svg";
+import youtube from "../../assets/Youtube.svg";
 import discord from "../../assets/discord.svg";
 
 function footer() {
