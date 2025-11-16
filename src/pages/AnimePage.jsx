@@ -1,205 +1,106 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getMoviesByCategory } from '../../services/apiService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getMoviesByCategory } from '../services/apiService';
 
-const ITEMS_PER_PAGE = 24;
-
-const MoviesGridByCategory = () => {
-  const { categoryId, categoryName } = useParams();
+const AnimePage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
-  // Mapping các thể loại phổ biến
-  const categoryMapping = {
-    'hanh-dong': 'hành động',
-    'tinh-cam': 'tình cảm',
-    'hai-huoc': 'hài hước',
-    'kinh-di': 'kinh dị',
-    'vien-tuong': 'viễn tưởng',
-    'phieu-luu': 'phiêu lưu',
-    'hoat-hinh': 'hoạt hình',
-    'chinh-kich': 'chính kịch',
-    'tai-lieu': 'tài liệu',
-    'gia-dinh': 'gia đình',
-    'mien-tay': 'miền tây tếu',
-    'tre-em': 'trẻ em',
-    'lich-su': 'lịch sử',
-    'co-trang': 'cổ trang',
-    'chien-tranh': 'chiến tranh',
-    'bi-an': 'bí ẩn',
-    'phim-18': 'người lớn',
-    'tam-ly': 'tâm lý',
-    'the-thao': 'thể thao',
-    'am-nhac': 'âm nhạc',
-    'hoc-duong': 'học đường',
-    'hinh-su': 'hình sự',
-    'vo-thuat': 'võ thuật',
-    'khoa-hoc': 'khoa học',
-    'than-thoai': 'thần thoại',
-    'kinh-dien': 'kinh điển'
+  const [totalItems, setTotalItems] = useState(0);
+
+  const ITEMS_PER_PAGE = 24;
+
+  const constructImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/')) {
+      return `https://phimimg.com${url}`;
+    }
+    return `https://phimimg.com/${url}`;
   };
 
-  // Chuyển đổi tên thể loại có dấu
-  const decodedCategoryName = categoryName 
-    ? `Phim ${categoryMapping[categoryName] || categoryName.replace(/-/g, ' ')}`
-    : 'Phim theo thể loại';
-
-  console.log('🎬 MoviesGrid Component Rendered!');
-  console.log('  - categoryId:', categoryId);
-  console.log('  - categoryName:', categoryName);
-  console.log('  - decodedCategoryName:', decodedCategoryName);
-  console.log('  - loading:', loading);
-  console.log('  - movies.length:', movies.length);
-  console.log('  - error:', error);
-
   const fetchMovies = useCallback(async (page = 1) => {
+    console.log('=== fetchMovies called with page:', page, '===');
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-      
-      if (!categoryName) {
-        console.error('No categoryName provided!');
-        navigate('/');
-        return;
-      }
-
-      console.log(`Fetching movies for category: ${categoryName}, page: ${page}`);
-      
-      const response = await getMoviesByCategory(categoryName, { 
-        page, 
+      console.log('Calling getMoviesByCategory for hoat-hinh...');
+      // Try with 'hoathinh' (no dash) as the API might expect this format
+      const response = await getMoviesByCategory('hoat-hinh', {
+        page: page,
         limit: ITEMS_PER_PAGE,
         sortField: 'modified.time',
         sortType: 'desc'
       });
       
-      console.log('✅ Full API Response:', response);
+      console.log('API response received:', response);
       
-      let moviesData = [];
-      let paginationData = null;
-      
-      if (response?.data?.items) {
-        moviesData = response.data.items;
-        paginationData = response.data.pagination || response.data.params?.pagination;
-      } 
-      else if (response?.items) {
-        moviesData = response.items;
-        paginationData = response.pagination || response.params?.pagination;
-      }
-      else if (Array.isArray(response)) {
-        moviesData = response;
-      }
-      else if (response?.data) {
-        moviesData = Array.isArray(response.data) ? response.data : [];
-        paginationData = response.pagination || response.params?.pagination || 
-                        (response.data.pagination || response.data.params?.pagination);
-      }
-      
-      console.log('Extracted movies data:', moviesData);
-      console.log('Pagination data:', paginationData);
-      
-      if (!moviesData || !Array.isArray(moviesData) || moviesData.length === 0) {
-        setError('Không tìm thấy phim nào trong thể loại này');
-        setMovies([]);
-        return;
-      }
-      
-      const processedMovies = moviesData.map(movie => {
-        let imageUrl = movie.poster_url || movie.poster_path || movie.poster || null;
-        if (imageUrl && !imageUrl.startsWith('http')) {
-          imageUrl = `https://img.phimapi.com/${imageUrl.replace(/^\//, '')}`;
-        }
-
-        return {
+      if (response && response.data) {
+        const moviesData = response.data || [];
+        const paginationData = response.pagination || {};
+        
+        console.log('Total anime movies from API:', moviesData.length);
+        console.log('Sample movies:', moviesData.slice(0, 3));
+        
+        // Process movies data
+        const processedMovies = moviesData.map(movie => ({
           ...movie,
+          poster_url: constructImageUrl(movie.poster_url || movie.thumb_url || movie.poster),
           _id: movie._id || movie.id,
-          title: movie.name || movie.title || movie.origin_name || 'Không có tiêu đề',
-          origin_name: movie.origin_name || movie.original_name || '',
-          poster_url: imageUrl,
-          slug: movie.slug || movie._id || movie.id,
-          imdb_rating: movie.tmdb?.vote_average || movie.imdb?.rating || movie.vote_average || movie.rating || 0,
+          slug: movie.slug,
+          title: movie.name || movie.title,
+          imdb_rating: movie.tmdb?.vote_average || 0,
+          quality: movie.quality || movie.lang || 'HD',
           episode_current: movie.episode_current || '',
-          episode_total: movie.episode_total || movie.total_episodes || 0,
-          year: movie.year || (movie.release_date ? movie.release_date.substring(0, 4) : ''),
-          quality: movie.quality || 'HD',
-          lang: movie.lang || 'Vietsub',
-          type: movie.type || 'series'
-        };
-      });
-      
-      setMovies(processedMovies);
-      
-      if (paginationData) {
-        const totalPages = paginationData.totalPages || 
-                          paginationData.total_pages || 
-                          (paginationData.totalItems ? Math.ceil(paginationData.totalItems / ITEMS_PER_PAGE) : 1);
+          episode_total: movie.episode_total || 0,
+          year: movie.year || '',
+          time: movie.time || '',
+          lang: movie.lang || 'Vietsub'
+        }));
         
-        const currentPage = paginationData.currentPage || 
-                           paginationData.current_page || 
-                           page || 
-                           1;
+        console.log('Setting movies:', processedMovies.length);
+        setMovies(processedMovies);
         
-        console.log('Setting pagination:', { totalPages, currentPage });
+        // Set pagination from API response
+        setTotalItems(paginationData.totalItems || 0);
+        setTotalPages(paginationData.totalPages || 1);
+        setCurrentPage(paginationData.currentPage || page);
         
-        setTotalPages(totalPages);
-        setCurrentPage(Number(currentPage));
+        console.log('Pagination set - Total:', paginationData.totalItems, 'Pages:', paginationData.totalPages);
       } else {
-        const hasMoreItems = moviesData.length === ITEMS_PER_PAGE;
-        const calculatedTotalPages = hasMoreItems ? (page + 1) : page;
-        console.log('No pagination data, calculated totalPages:', calculatedTotalPages);
-        
-        setTotalPages(calculatedTotalPages);
-        setCurrentPage(Number(page));
+        console.log('No data in response');
+        setMovies([]);
       }
-      
     } catch (err) {
-      console.error('Error in fetchMovies:', err);
-      console.error('Error details:', err.response || err.message);
-      setError(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tải dữ liệu');
-      setMovies([]);
+      console.error('Error fetching anime movies:', err);
+      setError('Không thể tải danh sách phim anime. Vui lòng thử lại sau.');
     } finally {
+      console.log('fetchMovies completed, setting loading to false');
       setLoading(false);
     }
-  }, [categoryId, categoryName, decodedCategoryName, navigate]);
+  }, []);
 
-  const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
-    fetchMovies(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  useEffect(() => {
+    console.log('=== AnimePage useEffect triggered ===');
+    fetchMovies(1);
+  }, [fetchMovies]);
 
   const handleMovieClick = (movie) => {
-    navigate(`/movie/${movie.slug}`);
+    navigate(`/phim/${movie._id}/${movie.slug}`);
   };
 
-  useEffect(() => {
-    if (currentPage > 1) {
-      const newPath = `/the-loai/${categoryId}/${categoryName}?page=${currentPage}`;
-      window.history.pushState({}, '', newPath);
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      fetchMovies(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [currentPage, categoryId, categoryName]);
-
-  useEffect(() => {
-    console.log('=== 🔄 MoviesGrid useEffect TRIGGERED ===');
-    console.log('categoryId:', categoryId);
-    console.log('categoryName:', categoryName);
-    
-    const searchParams = new URLSearchParams(location.search);
-    const pageFromUrl = parseInt(searchParams.get('page')) || 1;
-    
-    if (categoryId || categoryName) {
-      console.log('✅ Calling fetchMovies with page:', pageFromUrl);
-      fetchMovies(pageFromUrl);
-    } else {
-      console.warn('❌ No categoryId or categoryName found!');
-    }
-  }, [categoryId, categoryName, location.search]);
+  };
 
   if (loading) {
     return (
@@ -231,12 +132,20 @@ const MoviesGridByCategory = () => {
             </div>
             <h2 className="text-2xl font-bold text-red-500 mb-4">Có lỗi xảy ra</h2>
             <p className="text-gray-300 mb-6">{error}</p>
-            <button
-              onClick={() => fetchMovies(currentPage)}
-              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
-            >
-              Thử lại
-            </button>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button
+                onClick={() => fetchMovies(currentPage)}
+                className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
+              >
+                Thử lại
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold border border-gray-700"
+              >
+                Về trang chủ
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -253,8 +162,14 @@ const MoviesGridByCategory = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-200 mb-4">Không tìm thấy phim</h2>
-            <p className="text-gray-400 mb-6">Không có phim nào trong thể loại này.</p>
+            <h2 className="text-2xl font-bold text-gray-200 mb-4">Không tìm thấy phim anime</h2>
+            <p className="text-gray-400 mb-6">Không có phim anime nào được tìm thấy.</p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
+            >
+              Về trang chủ
+            </button>
           </div>
         </div>
       </div>
@@ -262,12 +177,13 @@ const MoviesGridByCategory = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] py-8 pt-20">
+    <div className="min-h-screen bg-[#030712] py-8">
       <div className="container mx-auto px-4">
         {/* Header với gradient */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-500 via-red-600 to-pink-600 bg-clip-text text-transparent mb-2">
-            {decodedCategoryName}
+            Phim Anime
+            {totalItems > 0 && <span className="text-gray-500 ml-2">({totalItems} phim)</span>}
           </h1>
           <div className="h-1 w-24 bg-gradient-to-r from-red-500 to-pink-600 rounded-full"></div>
         </div>
@@ -330,23 +246,16 @@ const MoviesGridByCategory = () => {
                   )}
                 </div>
                 
-                {/* Quality & Language Badge */}
-                <div className="absolute top-2 left-2 flex flex-col gap-1.5">
-                  {movie.quality && (
-                    <span className="bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-lg backdrop-blur-sm">
-                      {movie.quality}
-                    </span>
-                  )}
-                  {movie.lang && (
-                    <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-lg backdrop-blur-sm">
-                      {movie.lang}
-                    </span>
-                  )}
-                </div>
+                {/* Quality Badge */}
+                {movie.quality && (
+                  <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded font-bold">
+                    {movie.quality}
+                  </div>
+                )}
                 
                 {/* IMDB Rating */}
                 {movie.imdb_rating > 0 && (
-                  <div className="absolute top-2 right-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center shadow-lg backdrop-blur-sm">
+                  <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full flex items-center">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
@@ -356,27 +265,36 @@ const MoviesGridByCategory = () => {
               </div>
               
               {/* Movie Info */}
-              <div className="p-3">
-                <h3 
-                  className="font-semibold text-sm text-gray-100 mb-1.5 line-clamp-2 min-h-[40px] group-hover:text-red-500 transition-colors" 
-                  title={movie.title}
-                >
+              <div className="p-4">
+                <h3 className="font-bold text-white mb-2 line-clamp-2 min-h-[3rem] text-sm">
                   {movie.title}
                 </h3>
                 
-                {/* Origin Name */}
-                {movie.origin_name && movie.origin_name !== movie.title && (
-                  <p className="text-xs text-gray-500 mb-2 line-clamp-1" title={movie.origin_name}>
-                    {movie.origin_name}
-                  </p>
-                )}
-                
-                {/* Year and Type */}
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-medium text-gray-400">{movie.year || 'N/A'}</span>
-                  <span className="bg-gray-800 px-2 py-1 rounded-md text-gray-300 capitalize border border-gray-700">
-                    {movie.type === 'series' ? 'Phim bộ' : 'Phim lẻ'}
-                  </span>
+                <div className="space-y-1 text-xs text-gray-400">
+                  {movie.year && (
+                    <div className="flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {movie.year}
+                    </div>
+                  )}
+                  
+                  {movie.time && (
+                    <div className="flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {movie.time}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4" />
+                    </svg>
+                    {movie.lang || 'Vietsub'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -469,4 +387,4 @@ const MoviesGridByCategory = () => {
   );
 };
 
-export default MoviesGridByCategory;
+export default AnimePage;

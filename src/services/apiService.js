@@ -342,7 +342,7 @@ export const getMoviesByCategory = async (category, options = {}) => {
       // Try with 'phim-' prefix
       `${PHIM_API_URL}/v1/api/danh-sach/phim-${categorySlug}?${params}`,
       // Try with 'the-loai-' prefix
-      `${PHIM_API_URL}/v1/api/danh-sach/the-loai-${categorySlug}?${params}`,
+      `${PHIM_API_URL}/v1/api/danh-sach/${categorySlug}?${params}`,
     ];
 
     let lastError = null;

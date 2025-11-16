@@ -5,7 +5,7 @@ const AdultMovies = () => {
   return (
     <CategorySection 
       categoryId="phim-18"
-      categoryName="Phim 18+"
+      categoryName="Phim không dành cho trẻ em"
     />
   );
 };

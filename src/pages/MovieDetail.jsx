@@ -154,7 +154,7 @@ const MovieDetail = () => {
   };
 
   // Parse episode data from string or array
-   const parseEpisodes = (episodeData) => {
+  const parseEpisodes = (episodeData) => {
     if (!episodeData) return [];
     
     console.log('Raw episode data:', episodeData);
@@ -213,6 +213,7 @@ const MovieDetail = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
+
   const getEpisodeNumber = (name) => {
     if (!name) return '0';
 
@@ -234,6 +235,7 @@ const MovieDetail = () => {
     // If still no number found, return the first few characters
     return name.substring(0, 3) || '0';
   };
+
   useEffect(() => {
     // Reset states when URL parameters change
     setMovie(null);
@@ -259,31 +261,37 @@ const MovieDetail = () => {
   useEffect(() => {
     console.log('Movie data:', movie); // Debug log
 
+    // Helper function to parse episode_current string (e.g., "Tập 5", "5", "Hoàn tất (12/12)")
+    const parseCurrentEpisodeNumber = (episodeCurrent) => {
+      if (!episodeCurrent) return 0;
+      
+      // Try to extract number from various formats
+      // "Tập 5", "5", "Hoàn tất (12/12)", "12/24", etc.
+      const matches = String(episodeCurrent).match(/(\d+)/g);
+      if (matches && matches.length > 0) {
+        // Get the first number (usually the current episode)
+        return parseInt(matches[0], 10);
+      }
+      return 0;
+    };
+
     // 1. First, try to use the episodes array directly
     if (movie?.episodes?.length > 0) {
       console.log('Using episodes array:', movie.episodes);
 
-      // If we have episode_current, limit to that number
+      // IMPORTANT: Only show episodes up to episode_current
       if (movie.episode_current) {
-        const currentEpisodeNum = Math.min(
-          parseInt(movie.episode_current, 10),
-          movie.episodes.length
-        );
-        console.log('Using episode_current to limit episodes:', currentEpisodeNum);
-        setEpisodeList(movie.episodes.slice(0, currentEpisodeNum));
+        const currentEpisodeNum = parseCurrentEpisodeNumber(movie.episode_current);
+        console.log('Parsed episode_current number:', currentEpisodeNum);
+        
+        // Limit to available episodes that are <= current episode
+        const availableEpisodes = movie.episodes.slice(0, Math.min(currentEpisodeNum, movie.episodes.length));
+        console.log('Showing episodes up to current:', availableEpisodes.length);
+        setEpisodeList(availableEpisodes);
       }
-      // If no episode_current but we have episode_total, use that
-      else if (movie.episode_total) {
-        const totalEpisodes = Math.min(
-          parseInt(movie.episode_total, 10),
-          movie.episodes.length
-        );
-        console.log('Using episode_total to limit episodes:', totalEpisodes);
-        setEpisodeList(movie.episodes.slice(0, totalEpisodes));
-      }
-      // Otherwise, show all available episodes
+      // Fallback: if no episode_current, show all available episodes
       else {
-        console.log('No episode count, showing all available episodes');
+        console.log('No episode_current, showing all available episodes');
         setEpisodeList([...movie.episodes]);
       }
     }
@@ -293,27 +301,18 @@ const MovieDetail = () => {
       const allEpisodes = parseEpisodes(movie.episode_data);
 
       if (allEpisodes.length > 0) {
-        // If we have episode_current, use it to limit
+        // IMPORTANT: Only show episodes up to episode_current
         if (movie.episode_current) {
-          const currentEpisodeNum = Math.min(
-            parseInt(movie.episode_current, 10),
-            allEpisodes.length
-          );
-          console.log('Using episode_current with parsed episodes:', currentEpisodeNum);
-          setEpisodeList(allEpisodes.slice(0, currentEpisodeNum));
+          const currentEpisodeNum = parseCurrentEpisodeNumber(movie.episode_current);
+          console.log('Parsed episode_current number:', currentEpisodeNum);
+          
+          const availableEpisodes = allEpisodes.slice(0, Math.min(currentEpisodeNum, allEpisodes.length));
+          console.log('Showing parsed episodes up to current:', availableEpisodes.length);
+          setEpisodeList(availableEpisodes);
         }
-        // If no episode_current but we have episode_total
-        else if (movie.episode_total) {
-          const totalEpisodes = Math.min(
-            parseInt(movie.episode_total, 10),
-            allEpisodes.length
-          );
-          console.log('Using episode_total with parsed episodes:', totalEpisodes);
-          setEpisodeList(allEpisodes.slice(0, totalEpisodes));
-        }
-        // Otherwise show all parsed episodes
+        // Fallback: show all parsed episodes
         else {
-          console.log('No episode count, showing all parsed episodes');
+          console.log('No episode_current, showing all parsed episodes');
           setEpisodeList([...allEpisodes]);
         }
       } else {
@@ -321,27 +320,40 @@ const MovieDetail = () => {
         setEpisodeList([]);
       }
     }
-    // 3. Fallback to generating episodes based on episode_total if available
-    else if (movie?.episode_total) {
-      const totalEpisodes = parseInt(movie.episode_total, 10);
-      console.log('Generating episodes from episode_total:', totalEpisodes);
+    // 3. Generate episodes based on episode_current (NOT episode_total)
+    else if (movie?.episode_current) {
+      const currentEpisodeNum = parseCurrentEpisodeNumber(movie.episode_current);
+      console.log('Generating episodes from episode_current:', currentEpisodeNum);
 
-      const generatedEpisodes = Array.from({ length: totalEpisodes }, (_, i) => ({
-        name: `Tập ${i + 1}`,
-        slug: `tap-${String(i + 1).padStart(2, '0')}`,
-        url: `#`
-      }));
+      if (currentEpisodeNum > 0) {
+        const generatedEpisodes = Array.from({ length: currentEpisodeNum }, (_, i) => ({
+          name: `Tập ${i + 1}`,
+          slug: `tap-${String(i + 1).padStart(2, '0')}`,
+          url: `#`
+        }));
 
-      console.log('Generated episodes:', generatedEpisodes);
-      setEpisodeList(generatedEpisodes);
+        console.log('Generated episodes based on current:', generatedEpisodes);
+        setEpisodeList(generatedEpisodes);
+      } else {
+        console.log('Could not parse episode_current number');
+        setEpisodeList([]);
+      }
     }
     // 4. Last resort: check if there are any episodes in the movie object
     else if (movie?.episode_list?.length > 0) {
       console.log('Using episode_list from movie data');
-      setEpisodeList(Array.isArray(movie.episode_list) ?
+      const episodes = Array.isArray(movie.episode_list) ?
         [...movie.episode_list] :
-        parseEpisodes(movie.episode_list)
-      );
+        parseEpisodes(movie.episode_list);
+      
+      // Still limit by episode_current if available
+      if (movie.episode_current) {
+        const currentEpisodeNum = parseCurrentEpisodeNumber(movie.episode_current);
+        const availableEpisodes = episodes.slice(0, Math.min(currentEpisodeNum, episodes.length));
+        setEpisodeList(availableEpisodes);
+      } else {
+        setEpisodeList(episodes);
+      }
     }
     // 5. No episodes found
     else {
@@ -430,25 +442,9 @@ const MovieDetail = () => {
     );
   }
 
-  // Function to handle back navigation
-  const handleBackClick = () => {
-    navigate('/');
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 pt-20 pb-12">
       <div className="container mx-auto px-4">
-        {/* Back Button */}
-        <button 
-          onClick={handleBackClick}
-          className="mb-6 flex items-center text-gray-300 hover:text-white transition-colors text-sm"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Trở về trang chủ
-        </button>
-        
         {/* Movie Header with Backdrop */}
         <div
           className="relative h-64 md:h-96 flex items-end rounded-lg overflow-hidden mb-8"
@@ -798,108 +794,109 @@ const MovieDetail = () => {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Right Column - 1/3 width on large screens */}
-          <div className="lg:w-1/3">
-            {/* Related Movies */}
-            {relatedMovies.length > 0 && (
-              <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-700">
-                  <h3 className="text-lg font-semibold text-white">Phim liên quan</h3>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-4">
-                    {relatedMovies.map((item) => (
-                      <Link
-                        key={item._id}
-                        to={`/phim/${item._id}/${item.slug}`}
-                        className="flex gap-3 group"
-                      >
-                        <div className="w-24 h-16 flex-shrink-0 rounded overflow-hidden">
-                          <img
-                            src={item.thumb_url || item.poster_path}
-                            alt={item.name}
-                            className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-white font-medium group-hover:text-red-500 transition-colors line-clamp-2">
-                            {item.name}
-                          </h4>
-                          <div className="flex items-center text-sm text-gray-400 mt-1">
-                            <span>{item.year}</span>
-                            <span className="mx-2">•</span>
-                            <span className="flex items-center">
-                              <FaStar className="text-yellow-400 mr-1" />
-                              {item.vote_average?.toFixed(1) || 'N/A'}
-                            </span>
+            {/* Right Column - 1/3 width on large screens */}
+            <div className="lg:w-1/3">
+              {/* Related Movies */}
+              {relatedMovies.length > 0 && (
+                <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
+                  <div className="p-4 border-b border-gray-700">
+                    <h3 className="text-lg font-semibold text-white">Phim liên quan</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      {relatedMovies.map((item) => (
+                        <Link
+                          key={item._id}
+                          to={`/phim/${item._id}/${item.slug}`}
+                          className="flex gap-3 group"
+                        >
+                          <div className="w-24 h-16 flex-shrink-0 rounded overflow-hidden">
+                            <img
+                              src={item.thumb_url || item.poster_path}
+                              alt={item.name}
+                              className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                            />
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                          <div className="flex-1">
+                            <h4 className="text-white font-medium group-hover:text-red-500 transition-colors line-clamp-2">
+                              {item.name}
+                            </h4>
+                            <div className="flex items-center text-sm text-gray-400 mt-1">
+                              <span>{item.year}</span>
+                              <span className="mx-2">•</span>
+                              <span className="flex items-center">
+                                <FaStar className="text-yellow-400 mr-1" />
+                                {item.vote_average?.toFixed(1) || 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Movie Info Box */}
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="text-lg font-semibold text-white">Thông tin khác</h3>
-              </div>
-              <div className="p-4">
-                <ul className="space-y-3">
-                  <li className="flex items-center">
-                    <FaFilm className="text-red-500 mr-3 w-5" />
-                    <span className="text-gray-300">
-                      <span className="text-gray-400">Tình trạng: </span>
-                      {movie.status || 'Đang chiếu'}
-                    </span>
-                  </li>
-                  <li className="flex items-center">
-                    <FaEye className="text-red-500 mr-3 w-5" />
-                    <span className="text-gray-300">
-                      <span className="text-gray-400">Lượt xem: </span>
-                      {(movie.views || 0).toLocaleString()}
-                    </span>
-                  </li>
-                  <li className="flex items-center">
-                    <FaCalendarAlt className="text-red-500 mr-3 w-5" />
-                    <span className="text-gray-300">
-                      <span className="text-gray-400">Ngày cập nhật: </span>
-                      {formatDate(movie.created || movie.modified)}
-                    </span>
-                  </li>
-                  {movie.imdb_id && (
+              {/* Movie Info Box */}
+              <div className="bg-gray-800 rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-700">
+                  <h3 className="text-lg font-semibold text-white">Thông tin khác</h3>
+                </div>
+                <div className="p-4">
+                  <ul className="space-y-3">
                     <li className="flex items-center">
-                      <SiImdb className="text-yellow-500 mr-3 w-5 h-5" />
-                      <a
-                        href={`https://www.imdb.com/title/${movie.imdb_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:underline"
-                      >
-                        Xem trên IMDB
-                      </a>
+                      <FaFilm className="text-red-500 mr-3 w-5" />
+                      <span className="text-gray-300">
+                        <span className="text-gray-400">Tình trạng: </span>
+                        {movie.status || 'Đang chiếu'}
+                      </span>
                     </li>
-                  )}
-                </ul>
+                    <li className="flex items-center">
+                      <FaEye className="text-red-500 mr-3 w-5" />
+                      <span className="text-gray-300">
+                        <span className="text-gray-400">Lượt xem: </span>
+                        {(movie.views || 0).toLocaleString()}
+                      </span>
+                    </li>
+                    <li className="flex items-center">
+                      <FaCalendarAlt className="text-red-500 mr-3 w-5" />
+                      <span className="text-gray-300">
+                        <span className="text-gray-400">Ngày cập nhật: </span>
+                        {formatDate(movie.created || movie.modified)}
+                      </span>
+                    </li>
+                    {movie.imdb_id && (
+                      <li className="flex items-center">
+                        <SiImdb className="text-yellow-500 mr-3 w-5 h-5" />
+                        <a
+                          href={`https://www.imdb.com/title/${movie.imdb_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline"
+                        >
+                          Xem trên IMDB
+                        </a>
+                      </li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="mt-6 w-full">
-          {/* Related Movies Section */}
-          <h3 className="text-xl font-semibold text-white mb-4">Phim liên quan</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-4">
-            {relatedMovies.length > 0 ? (
-              relatedMovies.map(movie => (
-                <MovieCard key={movie._id} movie={movie} />
-              ))
-            ) : (
-              <p className="text-gray-400">Không có phim liên quan</p>
-            )}
+          
+          <div className="mt-6 w-full">
+            {/* Related Movies Section */}
+            <h3 className="text-xl font-semibold text-white mb-4">Phim liên quan</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {relatedMovies.length > 0 ? (
+                relatedMovies.map(movie => (
+                  <MovieCard key={movie._id} movie={movie} />
+                ))
+              ) : (
+                <p className="text-gray-400">Không có phim liên quan</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/organisms/header';
 
 // Lazy load pages
 const HomePage = lazy(() => import('./pages/homePage'));
@@ -9,6 +10,7 @@ const MoviesGridByCountry = lazy(() => import('./components/templates/MoviesGrid
 const MovieDetailPage = lazy(() => import('./pages/MovieDetail'));
 const SingleMoviesPage = lazy(() => import('./pages/SingleMoviesPage'));
 const SeriesMoviesPage = lazy(() => import('./pages/SeriesMoviesPage'));
+const AnimePage = lazy(() => import('./pages/AnimePage'));
 import WatchMovie from './pages/WatchMovie';
 import MoviesGridByCategory from './components/templates/MoviesGridByCategory.jsx';
 
@@ -42,6 +44,7 @@ const NotFoundPage = () => (
 function App() {
   return (
     <Router>
+      <Navbar />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -60,6 +63,7 @@ function App() {
           {/* Movie type routes */}
           <Route path="/phim-le" element={<SingleMoviesPage />} />
           <Route path="/phim-bo" element={<SeriesMoviesPage />} />
+          <Route path="/anime" element={<AnimePage />} />
           
           {/* Search route */}
           {/* <Route path="/tim-kiem" element={<SearchPage />} /> */}

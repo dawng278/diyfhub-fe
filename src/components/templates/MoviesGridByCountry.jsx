@@ -297,7 +297,7 @@ const MoviesGridByCountry = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] py-8">
+    <div className="min-h-screen bg-[#030712] py-8 pt-20">
       <div className="container mx-auto px-4">
         {/* Header với gradient */}
         <div className="mb-8">

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { getMovieList } from '../services/apiService';
 
 const ITEMS_PER_PAGE = 24;
 
 const SeriesMoviesPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +154,7 @@ const SeriesMoviesPage = () => {
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
     setCurrentPage(newPage);
+    navigate(`?page=${newPage}`, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -160,26 +163,28 @@ const SeriesMoviesPage = () => {
   };
 
   useEffect(() => {
+    // Get page from URL parameter or default to 1
+    const pageFromUrl = parseInt(searchParams.get('page')) || 1;
     console.log('=== 🔄 SeriesMoviesPage useEffect TRIGGERED ===');
-    console.log('currentPage:', currentPage);
+    console.log('pageFromUrl:', pageFromUrl);
+    
+    // Update current page state to match URL
+    setCurrentPage(pageFromUrl);
     
     console.log('✅ Calling fetchMovies...');
-    fetchMovies(currentPage);
-  }, [currentPage, fetchMovies]);
+    fetchMovies(pageFromUrl);
+  }, [location.search, searchParams, fetchMovies]);
 
-  if (loading && movies.length === 0) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-6">
-        <div className="container mx-auto px-3">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">
-            Đang tải phim bộ...
-          </h1>
+      <div className="min-h-screen bg-[#030712] py-8">
+        <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+            {[...Array(12)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[2/3] bg-gray-200 rounded-lg mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="bg-gray-800 rounded-xl aspect-[2/3] mb-3"></div>
+                <div className="h-4 bg-gray-800 rounded-lg w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-800 rounded-lg w-1/2"></div>
               </div>
             ))}
           </div>
@@ -190,21 +195,26 @@ const SeriesMoviesPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-3">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Lỗi</h2>
-            <p className="text-gray-700 mb-6">{error}</p>
+      <div className="min-h-screen bg-[#030712] py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto bg-gray-900 rounded-xl shadow-2xl p-8 text-center border border-gray-800">
+            <div className="mb-4">
+              <svg className="w-16 h-16 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-red-500 mb-4">Có lỗi xảy ra</h2>
+            <p className="text-gray-300 mb-6">{error}</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
                 onClick={() => fetchMovies(currentPage)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
               >
                 Thử lại
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
+                className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold border border-gray-700"
               >
                 Về trang chủ
               </button>
@@ -217,14 +227,19 @@ const SeriesMoviesPage = () => {
 
   if (movies.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-3">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Không tìm thấy phim</h2>
-            <p className="text-gray-600 mb-4">Không có phim bộ nào được tìm thấy.</p>
+      <div className="min-h-screen bg-[#030712] py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto bg-gray-900 rounded-xl shadow-2xl p-8 text-center border border-gray-800">
+            <div className="mb-4">
+              <svg className="w-16 h-16 text-gray-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-200 mb-4">Không tìm thấy phim</h2>
+            <p className="text-gray-400 mb-6">Không có phim bộ nào được tìm thấy.</p>
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
             >
               Về trang chủ
             </button>
@@ -235,18 +250,22 @@ const SeriesMoviesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
-      <div className="container mx-auto px-3">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">
-          Phim Bộ Mới Nhất
-          {totalItems > 0 && <span className="text-gray-500"> ({totalItems} phim)</span>}
-        </h1>
+    <div className="min-h-screen bg-[#030712] py-8 pt-20">
+      <div className="container mx-auto px-4">
+        {/* Header với gradient */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-500 via-red-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Phim Bộ Mới Nhất
+            {totalItems > 0 && <span className="text-gray-500 ml-2">({totalItems} phim)</span>}
+          </h1>
+          <div className="h-1 w-24 bg-gradient-to-r from-red-500 to-pink-600 rounded-full"></div>
+        </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
           {movies.map((movie) => (
             <div 
               key={movie._id || movie.slug}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+              className="bg-gray-900 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-900/20 transition-all duration-300 cursor-pointer group border border-gray-800 hover:border-red-900/50"
               onClick={() => handleMovieClick(movie)}
             >
               {/* Movie Poster */}
@@ -300,9 +319,9 @@ const SeriesMoviesPage = () => {
                 
                 {/* Quality & Language Badge */}
                 <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  {movie.quality && (
+                {movie.quality && (
                     <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
-                      {movie.quality}
+                    {movie.quality}
                     </span>
                   )}
                   {movie.lang && (
@@ -310,7 +329,7 @@ const SeriesMoviesPage = () => {
                       {movie.lang}
                     </span>
                   )}
-                </div>
+                  </div>
                 
                 {/* IMDB Rating */}
                 {movie.imdb_rating > 0 && (
@@ -326,7 +345,7 @@ const SeriesMoviesPage = () => {
               {/* Movie Info */}
               <div className="p-3">
                 <h3 
-                  className="font-semibold text-sm text-gray-900 mb-1 line-clamp-2 min-h-[40px] group-hover:text-red-600 transition-colors" 
+                  className="font-semibold text-sm text-white mb-1 line-clamp-2 min-h-[40px] group-hover:text-red-600 transition-colors" 
                   title={movie.title}
                 >
                   {movie.title}
@@ -337,8 +356,8 @@ const SeriesMoviesPage = () => {
                   <p className="text-xs text-gray-500 mb-2 line-clamp-1" title={movie.origin_name}>
                     {movie.origin_name}
                   </p>
-                )}
-                
+                  )}
+                  
                 {/* Year and Type */}
                 <div className="flex justify-between items-center text-xs text-gray-600">
                   <span className="font-medium">{movie.year || 'N/A'}</span>
@@ -351,27 +370,31 @@ const SeriesMoviesPage = () => {
           ))}
         </div>
         
-        {/* Pagination */}
+        {/* Pagination - Dark Theme */}
         {totalPages > 1 && (
-          <div className="flex justify-center mt-8">
-            <div className="flex space-x-2 bg-white rounded-lg shadow p-2">
+          <div className="flex flex-col items-center mt-12 space-y-6">
+            <div className="flex space-x-2">
+              {/* First Page */}
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1}
-                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800 hover:border-red-900/50 transition-all duration-300 text-gray-300 hover:text-red-500 text-sm sm:text-base"
                 title="Trang đầu"
               >
                 &laquo;
               </button>
+              
+              {/* Previous Page */}
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800 hover:border-red-900/50 transition-all duration-300 text-gray-300 hover:text-red-500 text-sm sm:text-base"
                 title="Trang trước"
               >
                 &lsaquo;
               </button>
               
+              {/* Page Numbers */}
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum;
                 if (totalPages <= 5) {
@@ -388,10 +411,10 @@ const SeriesMoviesPage = () => {
                   <button
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`px-4 py-2 rounded font-medium transition-all ${
+                    className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base ${
                       currentPage === pageNum 
-                        ? 'bg-red-600 text-white shadow-md' 
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-900/50 border border-red-500' 
+                        : 'bg-gray-900 border border-gray-800 hover:bg-gray-800 hover:border-red-900/50 text-gray-300 hover:text-red-500'
                     }`}
                   >
                     {pageNum}
@@ -399,30 +422,35 @@ const SeriesMoviesPage = () => {
                 );
               })}
               
+              {/* Next Page */}
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800 hover:border-red-900/50 transition-all duration-300 text-gray-300 hover:text-red-500 text-sm sm:text-base"
                 title="Trang sau"
               >
                 &rsaquo;
               </button>
+              
+              {/* Last Page */}
               <button
                 onClick={() => handlePageChange(totalPages)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 rounded bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800 hover:border-red-900/50 transition-all duration-300 text-gray-300 hover:text-red-500 text-sm sm:text-base"
                 title="Trang cuối"
               >
                 &raquo;
               </button>
             </div>
+            
+            {/* Page Info */}
+            <div className="flex items-center space-x-3 text-sm text-gray-400">
+              <span className="bg-gray-900 px-4 py-2 rounded-lg border border-gray-800">
+                Trang <span className="text-red-500 font-semibold">{currentPage}</span> / {totalPages}
+              </span>
+            </div>
           </div>
         )}
-        
-        {/* Page Info */}
-        <div className="text-center mt-4 text-sm text-gray-600">
-          Trang {currentPage} / {totalPages} - Tổng {totalItems} phim
-        </div>
       </div>
     </div>
   );

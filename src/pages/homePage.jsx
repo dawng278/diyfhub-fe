@@ -6,7 +6,6 @@ import {
   getMoviesByCategory 
 } from '../services/apiService';
 import LoadingScreen from '../components/templates/LoadingScreen';
-import Header from '../components/organisms/header';
 import HeroBanner from '../components/templates/HeroBanner';
 import CategoriesSection from '../components/templates/categoriesSection';
 import MoviesByCountry from '../components/templates/movies_by_country';
@@ -26,7 +25,7 @@ const ClassicMovies = lazy(() => import('../components/templates/categories/Clas
 const CrimeMovies = lazy(() => import('../components/templates/categories/CrimeMovies'));
 const DocumentaryMovies = lazy(() => import('../components/templates/categories/DocumentaryMovies'));
 const LatestUpdatedMovies = lazy(() => import('../components/templates/categories/LatestUpdatedMovies'));
-const AnimeMovies = lazy(() => import('../components/templates/categories/AnimeMovies'));
+// const AnimeMovies = lazy(() => import('../components/templates/categories/AnimeMovies'));
 const DramaMovies = lazy(() => import('../components/templates/categories/DramaMovies'));
 const FamilyMovies = lazy(() => import('../components/templates/categories/FamilyMovies'));
 const HistoricalMovies = lazy(() => import('../components/templates/categories/HistoricalMovies'));
@@ -155,7 +154,6 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      <Header categories={initialData.categories} />
       <main>
         <HeroBanner movies={initialData.heroBanner} />
         <CategoriesSection categories={initialData.categories} />
@@ -170,7 +168,7 @@ const HomePage = () => {
         <LazyLoadComponent><AdultMovies /></LazyLoadComponent>
         <LazyLoadComponent><LatestUpdatedMovies /></LazyLoadComponent>
         <LazyLoadComponent><WesternMovies /></LazyLoadComponent>
-        <LazyLoadComponent><AnimeMovies /></LazyLoadComponent>
+        {/* <LazyLoadComponent><AnimeMovies /></LazyLoadComponent> */}
         <LazyLoadComponent><WarMovies /></LazyLoadComponent>
         <LazyLoadComponent><SportsMovies /></LazyLoadComponent>
         <LazyLoadComponent><RomanceMovies /></LazyLoadComponent>

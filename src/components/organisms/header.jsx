@@ -26,12 +26,6 @@ function Navbar() {
     const [isMobile, setIsMobile] = useState(false);
     const [genres, setGenres] = useState([]);
     const [countries, setCountries] = useState([]);
-    const [moreItems] = useState([
-        { id: 1, name: 'Phim mới cập nhật', slug: 'phim-moi' },
-        { id: 2, name: 'Phim lẻ mới', slug: 'phim-le' },
-        { id: 3, name: 'Phim bộ mới', slug: 'phim-bo' },
-        { id: 4, name: 'Phim chiếu rạp', slug: 'phim-chieu-rap' },
-    ]);
 
     // 1. (Từ bản "chuẩn") Tự động khóa scroll của trang khi menu mobile mở
     useEffect(() => {
@@ -63,7 +57,7 @@ function Navbar() {
         { label: "Phim bộ", hasDropdown: false, path: "/phim-bo" },
         { label: "Thể loại", hasDropdown: true, items: genres, type: 'genre' },
         { label: "Quốc gia", hasDropdown: true, items: countries, type: 'country' },
-        { label: "Thêm", hasDropdown: true, items: moreItems, type: 'more' },
+        { label: "Phim Anime", hasDropdown: false, path: "/anime" },
     ];
 
     // Check if mobile/tablet

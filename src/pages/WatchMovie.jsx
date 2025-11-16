@@ -256,7 +256,7 @@ const WatchMovie = () => {
   }
 
   return (
-    <div className="watch-page">
+    <div className="watch-page pt-12">
       <main className="main-content">
         <div className="container-fluid px-0">
           {/* Video Player Section */}
@@ -264,15 +264,6 @@ const WatchMovie = () => {
             <div className="video-container-main">
               {/* Header Section */}
               <div className="video-header">
-                <button 
-                  onClick={() => navigate(-1)}
-                  className="back-button"
-                  aria-label="Quay lại"
-                >
-                  <FaArrowLeft />
-                  <span className="back-text">Quay lại</span>
-                </button>
-                
                 <div className="movie-info-header">
                   <h1 className="movie-title-main">{movie.name}</h1>
                   <div className="movie-meta">
