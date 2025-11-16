@@ -787,26 +787,46 @@ const WatchMovie = () => {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  /* Tablet styles */
   .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    gap: 0.65rem;
   }
   
   .episode-btn {
-    font-size: 0.9rem;
-    padding: 0.4rem;
+    font-size: 0.95rem;
+    padding: 0.45rem;
+    border-radius: 0.4rem;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+  /* Mobile styles */
   .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
     gap: 0.5rem;
   }
   
   .episode-btn {
     font-size: 0.85rem;
+    padding: 0.35rem;
+    border-radius: 0.35rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Small mobile styles */
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 0.4rem;
+    padding: 0.4rem 0;
+  }
+  
+  .episode-btn {
+    font-size: 0.8rem;
+    padding: 0.3rem;
+    border-radius: 0.3rem;
   }
 }
 

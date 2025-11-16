@@ -325,10 +325,13 @@ const MovieDetail = () => {
       const currentEpisodeNum = parseCurrentEpisodeNumber(movie.episode_current);
       console.log('Generating episodes from episode_current:', currentEpisodeNum);
 
-      if (currentEpisodeNum > 0) {
-        const generatedEpisodes = Array.from({ length: currentEpisodeNum }, (_, i) => ({
-          name: `Tập ${i + 1}`,
-          slug: `tap-${String(i + 1).padStart(2, '0')}`,
+      // Handle single movies (episode_current = 0 or 1) and regular movies
+      const episodeCount = currentEpisodeNum === 0 ? 1 : currentEpisodeNum;
+      
+      if (episodeCount > 0) {
+        const generatedEpisodes = Array.from({ length: episodeCount }, (_, i) => ({
+          name: episodeCount === 1 ? 'Full' : `Tập ${i + 1}`,
+          slug: episodeCount === 1 ? 'full' : `tap-${String(i + 1).padStart(2, '0')}`,
           url: `#`
         }));
 
@@ -487,7 +490,7 @@ const MovieDetail = () => {
                   </span>
                   {movie.episode_current && (
                     <span className="bg-blue-600 text-xs px-2 py-1 rounded">
-                      {movie.episode_current}{movie.episode_total ? `/${movie.episode_total}` : ''}
+                      {movie.type === 'single' || movie.episode_current === '1' || movie.episode_current === 0 ? 'Phim lẻ' : `${movie.episode_current}${movie.episode_total ? `/${movie.episode_total}` : ''}`}
                     </span>
                   )}
                 </div>
@@ -640,10 +643,14 @@ const MovieDetail = () => {
                         </h3>
                         <div className="flex items-center gap-3">
                           <div className="bg-gray-800 text-sm px-3 py-1 rounded-full">
-                            <span className="text-red-400">Đã phát: </span>
-                            <span className="font-medium text-gray-400">
-                              {movie.episode_current}
-                              {movie.episode_total ? `/${movie.episode_total} tập` : ' tập'}
+                            <span className="text-red-400">
+                              {movie.type === 'single' || movie.episode_current === '1' || movie.episode_current === 0 ? 'Phim lẻ' : 'Đã phát:'}
+                            </span>
+                            <span className="font-medium text-gray-400 ml-1">
+                              {movie.type === 'single' || movie.episode_current === '1' || movie.episode_current === 0 
+                                ? '1 tập' 
+                                : ` ${movie.episode_current}${movie.episode_total ? `/${movie.episode_total} tập` : ' tập'}`
+                              }
                             </span>
                           </div>
                         </div>
