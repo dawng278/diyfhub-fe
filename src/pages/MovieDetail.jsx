@@ -430,67 +430,42 @@ const MovieDetail = () => {
     );
   }
 
+  // Function to handle back navigation
+  const handleBackClick = () => {
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 pt-20 pb-12">
       <div className="container mx-auto px-4">
+        {/* Back Button */}
+        <button 
+          onClick={handleBackClick}
+          className="mb-6 flex items-center text-gray-300 hover:text-white transition-colors text-sm"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Trở về trang chủ
+        </button>
+        
         {/* Movie Header with Backdrop */}
         <div
           className="relative h-64 md:h-96 flex items-end rounded-lg overflow-hidden mb-8"
         >
-          {/* Video Trailer Background */}
-          {movie.trailer_url || movie.trailer ? (
-            <div className="absolute inset-0 w-full h-full">
-              <video
-                key={movie.trailer_url || movie.trailer} // Force re-render when URL changes
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-full object-cover"
-                poster={movie.backdrop_path || movie.poster_path}
-                onEnded={(e) => {
-                  // Force restart the video to ensure smooth looping
-                  e.target.currentTime = 0;
-                  e.target.play().catch(error => {
-                    console.log('Video play error:', error);
-                  });
-                }}
-                onError={(e) => {
-                  console.error('Video playback error:', {
-                    error: e,
-                    src: movie.trailer_url || movie.trailer,
-                    type: 'video/mp4'
-                  });
-                }}
-                onCanPlay={(e) => {
-                  console.log('Video can play', e);
-                  e.target.play().catch(error => {
-                    console.log('Auto-play failed:', error);
-                  });
-                }}
-              >
-                <source
-                  src={movie.trailer_url || movie.trailer}
-                  type="video/mp4"
-                />
-                Your browser does not support the video tag.
-              </video>
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-900/90" />
-            </div>
-          ) : (
-            <div
-              className="absolute inset-0 w-full h-full bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${movie.backdrop_path || movie.poster_path})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat'
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-900/90" />
-            </div>
-          )}
-          <div />
+          {/* Background Image */}
+          <div
+            className="absolute inset-0 w-full h-full bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${movie.thumb_url || movie.backdrop_path || movie.poster_path})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              filter: 'brightness(0.6)'
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 to-gray-900/90" />
+          </div>
           <div className="container mx-auto px-4 relative z-10 pb-8">
             <div className="flex flex-col md:flex-row gap-8">
               {/* Movie Poster */}
@@ -508,19 +483,7 @@ const MovieDetail = () => {
 
               {/* Movie Info */}
               <div className="text-white flex-1 relative z-10">
-                {/* Play Trailer Button */}
-                {movie.trailer_url && (
-                  <button
-                    className="absolute -top-12 right-0 bg-red-600 hover:bg-red-700 text-white rounded-full p-3 shadow-lg transform transition-transform hover:scale-105"
-                    onClick={() => {
-                      // You can add a modal or fullscreen player here
-                      window.open(movie.trailer_url, '_blank');
-                    }}
-                    aria-label="Play trailer"
-                  >
-                    <FaPlayCircle className="w-8 h-8" />
-                  </button>
-                )}
+                
                 <div className="flex items-center flex-wrap gap-2 mb-2">
                   <h1 className="text-2xl md:text-4xl font-bold">{movie.name}</h1>
                   <span className="bg-red-600 text-xs px-2 py-1 rounded">
@@ -528,8 +491,7 @@ const MovieDetail = () => {
                   </span>
                   {movie.episode_current && (
                     <span className="bg-blue-600 text-xs px-2 py-1 rounded">
-                      Đã phát: {movie.episode_current}
-                      {movie.episode_total ? `/${movie.episode_total}` : ''}
+                      {movie.episode_current}{movie.episode_total ? `/${movie.episode_total}` : ''}
                     </span>
                   )}
                 </div>
@@ -683,10 +645,10 @@ const MovieDetail = () => {
                         <div className="flex items-center gap-3">
                           <div className="bg-gray-800 text-sm px-3 py-1 rounded-full">
                             <span className="text-red-400">Đã phát: </span>
-                            <span className="font-medium text-gray-400">{movie.episode_current}</span>
-                            {movie.episode_current && (
-                              <span className="text-gray-400">/{movie.episode_total} tập</span>
-                            )}
+                            <span className="font-medium text-gray-400">
+                              {movie.episode_current}
+                              {movie.episode_total ? `/${movie.episode_total} tập` : ' tập'}
+                            </span>
                           </div>
                         </div>
                       </div>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from 'react-router-dom';
 import arrowRight from "../../assets/arrowRight.svg";
 import heart from "../../assets/heart.svg";
 import infoCircle from "../../assets/info-circle.svg";
@@ -7,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { getNewMovies } from '../../services/apiService';
 
 function HeroBanner() {
+    const navigate = useNavigate();
     const [movies, setMovies] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -145,7 +147,10 @@ function HeroBanner() {
               {/* Action Buttons */}
               <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4 pt-2">
                 {/* Watch Now Button */}
-                <button className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-[#ff1500] hover:bg-[#cc1100] rounded-lg transition-all duration-300 transform hover:scale-105 shadow-xl">
+                <button 
+                  onClick={() => navigate(`/phim/${movie._id}/${movie.slug}`)}
+                  className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-[#ff1500] hover:bg-[#cc1100] rounded-lg transition-all duration-300 transform hover:scale-105 shadow-xl"
+                >
                   <span className="text-white font-bold text-xs md:text-sm">Xem ngay</span>
                   <img className="w-3 h-3 md:w-4 md:h-4" alt="Arrow" src={arrowRight} />
                 </button>

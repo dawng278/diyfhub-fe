@@ -1,4 +1,5 @@
-import React from 'react'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Màu sắc cho các thể loại
 const categoryColors = [
@@ -13,12 +14,38 @@ const categoryColors = [
 
 function CategoryCard({ category, index }) {
   // Chọn màu dựa trên index
-  const colorClass = categoryColors[index % categoryColors.length]
+  const colorClass = categoryColors[index % categoryColors.length];
+  
+  const navigate = useNavigate();
   
   const handleClick = () => {
-    console.log('Navigate to:', `/the-loai/${category.slug}`)
-    // TODO: Add navigation when router is setup
-  }
+    if (category) { 
+      // Ensure we have both id and slug
+      const categoryId = category.id; // Always use the ID for the ID parameter
+      const categorySlug = category.slug || category.name?.toLowerCase().replace(/\s+/g, '-');
+      const categoryName = category.name || 'Unknown Category';
+      
+      if (!categoryId) {
+        console.error('Category ID is missing!', category);
+        return;
+      }
+      
+      console.log('Navigating to category:', { 
+        id: categoryId, 
+        slug: categorySlug, 
+        name: categoryName 
+      });
+      
+      // Navigate to the category page with both ID and slug
+      navigate(`/the-loai/${categoryId}/${categorySlug}`, {
+        state: { 
+          categoryName: categoryName
+        }
+      });
+    } else {
+      console.warn('Invalid category data:', category);
+    }
+  };
   
   return (
     <div 

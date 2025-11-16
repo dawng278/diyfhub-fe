@@ -8,7 +8,7 @@ const DEFAULT_POSTER_SVG = `data:image/svg+xml,%3Csvg width='400' height='600' v
 // In-memory cache for loaded images
 const imageCache = new Map();
 
-function MovieCard({ id, title, posterPath, releaseDate, rating, mediaType = 'movie', loading = false }) {
+function MovieCard({ id, title, posterPath, releaseDate, rating, loading = false, linkPath = null }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [lowResImage, setLowResImage] = useState('');
@@ -126,23 +126,23 @@ function MovieCard({ id, title, posterPath, releaseDate, rating, mediaType = 'mo
     return { lowRes: DEFAULT_POSTER_SVG, highRes: DEFAULT_POSTER_SVG };
   }, []);
 
-  // Handle image error
-  const handleImageError = useCallback(() => {
-    setLowResImage(DEFAULT_POSTER_SVG);
-    setHighResImage(DEFAULT_POSTER_SVG);
-    setImageLoaded(true);
-    setImageError(true);
-  }, []);
+  // // Handle image error
+  // const handleImageError = useCallback(() => {
+  //   setLowResImage(DEFAULT_POSTER_SVG);
+  //   setHighResImage(DEFAULT_POSTER_SVG);
+  //   setImageLoaded(true);
+  //   setImageError(true);
+  // }, []);
 
-  // Handle image load
-  const handleImageLoad = useCallback(() => {
-    setImageLoaded(true);
-    setImageError(false);
+  // // Handle image load
+  // const handleImageLoad = useCallback(() => {
+  //   setImageLoaded(true);
+  //   setImageError(false);
     
-    // Cache the loaded image (only if it's not the default image)
-    if (lowResImage && lowResImage !== DEFAULT_POSTER_SVG) imageCache.set(lowResImage, true);
-    if (highResImage && highResImage !== DEFAULT_POSTER_SVG) imageCache.set(highResImage, true);
-  }, [lowResImage, highResImage]);
+  //   // Cache the loaded image (only if it's not the default image)
+  //   if (lowResImage && lowResImage !== DEFAULT_POSTER_SVG) imageCache.set(lowResImage, true);
+  //   if (highResImage && highResImage !== DEFAULT_POSTER_SVG) imageCache.set(highResImage, true);
+  // }, [lowResImage, highResImage]);
 
   // Process image URLs when posterPath changes
   useEffect(() => {
@@ -246,7 +246,7 @@ function MovieCard({ id, title, posterPath, releaseDate, rating, mediaType = 'mo
   return (
     <div className="group">
       <Link 
-        to={`/${mediaType}/${id}`}
+        to={linkPath}
         className="block rounded-lg overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#CC1100] focus:ring-offset-2 focus:ring-offset-gray-900"
         aria-label={`${title} (${releaseYear})`}
       >

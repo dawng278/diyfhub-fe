@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/atoms/LoadingSpinner';
 import { getMovieBySlug } from '../services/apiService';
-import { FaHome, FaPlay, FaArrowLeft } from 'react-icons/fa';
+import { FaHome, FaPlay, FaArrowLeft, FaServer, FaList, FaClock, FaStar, FaEye } from 'react-icons/fa';
 
 const WatchMovie = () => {
   const { movieSlug, episodeSlug } = useParams();
@@ -26,40 +26,34 @@ const WatchMovie = () => {
     
     console.log('Raw episode data:', episodeData);
     
-    // Use a Set to track unique episode numbers
-    const seenEpisodes = new Set();
+    const episodeMap = new Map();
     
-    const parsed = episodeData
+    episodeData
       .split('\n')
-      .filter(line => line.trim()) // Remove empty lines
-      .map(ep => {
+      .filter(line => line.trim())
+      .forEach(ep => {
         const parts = ep.split('|').map(part => part.trim());
         console.log('Parsed parts:', parts);
         
         if (parts.length >= 3) {
           const [name, slug, embedUrl] = parts;
           const episodeNum = getEpisodeNumber(name);
+          const cleanName = (name || '').trim().toLowerCase();
+          const cleanSlug = (slug || `tap-${episodeNum}`).trim().toLowerCase();
           
-          // Skip if we've already seen this episode number
-          if (seenEpisodes.has(episodeNum)) {
-            console.log('Skipping duplicate episode:', episodeNum);
-            return null;
+          const episodeKey = `${episodeNum}-${cleanName || cleanSlug}`;
+          
+          if (!episodeMap.has(episodeKey)) {
+            episodeMap.set(episodeKey, { 
+              name: name || `Tập ${episodeNum}`, 
+              slug: cleanSlug, 
+              embedUrl: embedUrl || '' 
+            });
           }
-          
-          seenEpisodes.add(episodeNum);
-          
-          return { 
-            name: name || `Tập ${episodeNum}`, 
-            slug: slug || `tap-${episodeNum}`.toLowerCase(), 
-            embedUrl: embedUrl || '' 
-          };
         }
-        return null;
-      })
-      .filter(Boolean);
+      });
     
-    // Sort episodes by episode number
-    parsed.sort((a, b) => {
+    const parsed = Array.from(episodeMap.values()).sort((a, b) => {
       const numA = parseInt(getEpisodeNumber(a.name)) || 0;
       const numB = parseInt(getEpisodeNumber(b.name)) || 0;
       return numA - numB;
@@ -90,29 +84,35 @@ const WatchMovie = () => {
         
         let parsedEpisodes = [];
         
-        // 1. Check if episodes array exists in the response
         if (response.episodes && Array.isArray(response.episodes)) {
           console.log('Found episodes array in response:', response.episodes);
           
-          // Process each server's episodes
+          const episodeMap = new Map();
+          
           response.episodes.forEach(server => {
             if (server.server_data && Array.isArray(server.server_data)) {
               server.server_data.forEach(ep => {
-                parsedEpisodes.push({
-                  name: ep.name || `Tập ${ep.slug || parsedEpisodes.length + 1}`,
-                  slug: ep.slug || `tap-${parsedEpisodes.length + 1}`,
-                  embedUrl: ep.link_embed || ep.link_m3u8 || ''
-                });
+                const episodeNum = getEpisodeNumber(ep.name || '');
+                const slug = (ep.slug || `tap-${episodeNum || parsedEpisodes.length + 1}`).toLowerCase().trim();
+                const name = ep.name || `Tập ${episodeNum || parsedEpisodes.length + 1}`;
+                
+                if (!episodeMap.has(slug)) {
+                  episodeMap.set(slug, {
+                    name: name,
+                    slug: slug,
+                    embedUrl: ep.link_embed || ep.link_m3u8 || ''
+                  });
+                }
               });
             }
           });
+          
+          parsedEpisodes = Array.from(episodeMap.values());
         }
-        // 2. Fallback to episode_data if no episodes array found
         else if (response.movie.episode_data) {
           console.log('Using episode_data from movie');
           parsedEpisodes = parseEpisodes(response.movie.episode_data);
         }
-        // 3. Handle single movie case
         else if (response.movie.type === 'single' || response.movie.episode_total === '1') {
           console.log('Single movie detected, creating default episode');
           parsedEpisodes = [{
@@ -125,11 +125,9 @@ const WatchMovie = () => {
         console.log('Parsed episodes:', parsedEpisodes);
         setEpisodes(parsedEpisodes);
         
-        // Set current episode
         if (parsedEpisodes.length > 0) {
           let episodeToSet = parsedEpisodes[0];
           
-          // Try to find the episode by slug if provided
           if (episodeSlug) {
             const foundEpisode = parsedEpisodes.find(
               ep => ep.slug === episodeSlug || 
@@ -143,7 +141,6 @@ const WatchMovie = () => {
           setCurrentEpisode(episodeToSet);
           setCurrentEpisodeUrl(episodeToSet.embedUrl);
           
-          // Update URL if needed
           if (!episodeSlug || episodeToSet.slug !== episodeSlug) {
             navigate(`/xem-phim/${movieSlug}/${episodeToSet.slug}`, { replace: true });
           }
@@ -162,14 +159,12 @@ const WatchMovie = () => {
     }
   }, [movieSlug, episodeSlug, navigate]);
 
-  // Load movie on mount
   useEffect(() => {
     console.log('useEffect triggered with:', { movieSlug, episodeSlug });
     loadMovie();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [movieSlug, episodeSlug, loadMovie]);
   
-  // Handle episode change
   const handleEpisodeChange = (episode) => {
     console.log('Changing to episode:', episode);
     setCurrentEpisode(episode);
@@ -178,7 +173,6 @@ const WatchMovie = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handle source change
   const handleSourceChange = (sourceId) => {
     console.log('Changing source to:', sourceId);
     setSelectedSource(sourceId);
@@ -188,30 +182,23 @@ const WatchMovie = () => {
     })));
   };
 
-  // Get episode number from name - format display
   const getEpisodeNumber = (name) => {
     if (!name) return '0';
     
-    // Try to extract number from various formats
-    // "Tập 01", "Tập 1", "01", "Episode 1", "Tập 1: Title", etc.
     const numberMatch = name.match(/(?:Tập|tập|Ep|ep|EP|Tập)\s*(\d+)|^(\d+)/i);
     
     if (numberMatch) {
-      // Return the first matched group that's not undefined
       return numberMatch[1] || numberMatch[2] || '0';
     }
     
-    // If no number found, try to extract any number from the string
     const anyNumberMatch = name.match(/\d+/);
     if (anyNumberMatch) {
       return anyNumberMatch[0];
     }
     
-    // If still no number found, return the first few characters
     return name.substring(0, 3) || '0';
   };
 
-  // Debug: Log current state
   useEffect(() => {
     console.log('Current State:', {
       movie,
@@ -221,7 +208,6 @@ const WatchMovie = () => {
     });
   }, [movie, episodes, currentEpisode, currentEpisodeUrl]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="loading-section">
@@ -233,7 +219,6 @@ const WatchMovie = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="error-section">
@@ -249,7 +234,6 @@ const WatchMovie = () => {
     );
   }
 
-  // No movie found
   if (!movie) {
     return (
       <div className="no-data-section">
@@ -274,66 +258,85 @@ const WatchMovie = () => {
   return (
     <div className="watch-page">
       <main className="main-content">
-        <div className="container mx-auto px-4">
+        <div className="container-fluid px-0">
           {/* Video Player Section */}
-          <div className="video-section">
-            <div className="video-container">
-              <div className="flex flex-col space-y-4 mb-4">
-                <div className="flex items-center">
-                  <button 
-                    onClick={() => navigate(-1)}
-                    className="mr-4 p-2 rounded-full hover:bg-gray-800 transition-colors"
-                    aria-label="Quay lại"
-                  >
-                    <FaArrowLeft />
-                  </button>
-                  <div>
-                    <h2 className="video-title">{movie.name}</h2>
-                    {currentEpisode && (
-                      <div className="flex items-center mt-2">
-                        <span className="bg-red-600 text-white text-xs px-2 py-1 rounded mr-2">
-                          {movie.episode_current || 'Đang cập nhật'}
-                        </span>
-                        <p className="video-episode">
-                          <FaPlay className="inline mr-2 text-red-500" />
-                          {currentEpisode.name}
-                        </p>
-                      </div>
+          <div className="video-wrapper">
+            <div className="video-container-main">
+              {/* Header Section */}
+              <div className="video-header">
+                <button 
+                  onClick={() => navigate(-1)}
+                  className="back-button"
+                  aria-label="Quay lại"
+                >
+                  <FaArrowLeft />
+                  <span className="back-text">Quay lại</span>
+                </button>
+                
+                <div className="movie-info-header">
+                  <h1 className="movie-title-main">{movie.name}</h1>
+                  <div className="movie-meta">
+                    {movie.year && (
+                      <span className="meta-item">
+                        <FaClock className="meta-icon" />
+                        {movie.year}
+                      </span>
+                    )}
+                    {movie.episode_current && (
+                      <span className="meta-badge">
+                        {movie.episode_current}
+                      </span>
+                    )}
+                    {movie.quality && (
+                      <span className="meta-badge quality">
+                        {movie.quality}
+                      </span>
+                    )}
+                    {movie.lang && (
+                      <span className="meta-badge">
+                        {movie.lang}
+                      </span>
                     )}
                   </div>
-                </div>
-                
-                {/* Server Selection */}
-                {sources.length > 0 && (
-                  <div className="server-selection">
-                    <div className="text-sm font-medium text-gray-300 mb-2">Chọn server:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {sources.map((source) => (
-                        <button
-                          key={source.id}
-                          onClick={() => handleSourceChange(source.id)}
-                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                            selectedSource === source.id
-                              ? 'bg-red-600 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                        >
-                          {source.name}
-                        </button>
-                      ))}
+                  {currentEpisode && (
+                    <div className="current-episode-info">
+                      <FaPlay className="play-icon" />
+                      <span>Đang xem: {currentEpisode.name}</span>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+
+              {/* Server Selection */}
+              {sources.length > 0 && (
+                <div className="server-section">
+                  <div className="server-header">
+                    <FaServer className="server-icon" />
+                    <span>Chọn Server</span>
+                  </div>
+                  <div className="server-buttons">
+                    {sources.map((source) => (
+                      <button
+                        key={source.id}
+                        onClick={() => handleSourceChange(source.id)}
+                        className={`server-btn ${selectedSource === source.id ? 'active' : ''}`}
+                      >
+                        {source.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               
-              <div className="video-player">
+              {/* Video Player */}
+              <div className="video-player-wrapper">
                 {currentEpisodeUrl ? (
-                  <div className="relative w-full pb-[56.25%] bg-black rounded-lg overflow-hidden shadow-xl">
+                  <div className="player-container">
                     {currentEpisodeUrl.includes('player.phimapi.com') ? (
                       <iframe
                         key={currentEpisodeUrl}
                         src={currentEpisodeUrl}
-                        className="absolute top-0 left-0 w-full h-full"
+                        className="video-iframe"
                         frameBorder="0"
                         allowFullScreen
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -344,7 +347,7 @@ const WatchMovie = () => {
                     ) : (
                       <video
                         key={currentEpisodeUrl}
-                        className="absolute top-0 left-0 w-full h-full"
+                        className="video-element"
                         controls
                         autoPlay
                         playsInline
@@ -356,45 +359,40 @@ const WatchMovie = () => {
                   </div>
                 ) : (
                   <div className="video-placeholder">
-                    <FaPlay className="text-6xl text-gray-400 mb-4" />
-                    <p className="text-gray-400">
-                      {episodes.length > 0 ? 'Chọn tập để bắt đầu xem' : 'Không có tập phim nào để phát'}
-                    </p>
+                    <div className="placeholder-content">
+                      <FaPlay className="placeholder-icon" />
+                      <p className="placeholder-text">
+                        {episodes.length > 0 ? 'Chọn tập để bắt đầu xem' : 'Không có tập phim nào để phát'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
-              
-              {/* Debug Info - Remove in production */}
-              {import.meta.env.MODE === 'development' && (
-                <div className="mt-4 p-4 bg-gray-800 rounded text-xs text-gray-300">
-                  <p><strong>Debug Info:</strong></p>
-                  <p>Episodes count: {episodes.length}</p>
-                  <p>Current Episode: {currentEpisode?.name || 'None'}</p>
-                  <p>Current URL: {currentEpisodeUrl || 'None'}</p>
-                  <p>Movie Type: {movie.type}</p>
-                  <p>Episode Total: {movie.episode_total}</p>
-                </div>
-              )}
             </div>
           </div>
           
           {/* Episodes Section */}
-          <div className="episodes-section">
-            <div className="container mx-auto">
-              <div className="flex justify-between items-center mb-4 px-4">
-                <h3 className="episodes-title">Danh sách tập phim</h3>
-                <div className="text-sm text-gray-400">
-                  {episodes.length} / {movie.episode_total || 'N/A'} tập
+          <div className="episodes-wrapper">
+            <div className="episodes-container">
+              <div className="episodes-header">
+                <div className="episodes-title-section">
+                  <FaList className="list-icon" />
+                  <h2 className="episodes-title">Danh sách tập</h2>
+                </div>
+                <div className="episodes-count">
+                  <span className="count-current">{episodes.length}</span>
+                  <span className="count-separator">/</span>
+                  <span className="count-total">{movie.episode_total || 'N/A'}</span>
+                  <span className="count-label">tập</span>
                 </div>
               </div>
               
               {episodes.length > 0 ? (
                 <div className="episodes-grid">
-                  {episodes.map((episode) => {
+                  {episodes.map((episode, index) => {
                     const isCurrent = currentEpisode?.slug === episode.slug;
                     const episodeNum = getEpisodeNumber(episode.name);
                     
-                    // Skip if we can't determine the episode number
                     if (!episodeNum) {
                       console.warn('Skipping episode with invalid number:', episode);
                       return null;
@@ -402,21 +400,21 @@ const WatchMovie = () => {
                     
                     return (
                       <button
-                        key={`ep-${episode.slug}`}
+                        key={`ep-${episode.slug || index}`}
                         onClick={() => handleEpisodeChange(episode)}
-                        className={`episode-btn ${isCurrent ? 'current-episode' : ''}`}
-                        title={`${episode.name}`}
+                        className={`episode-btn ${isCurrent ? 'active' : ''}`}
+                        title={episode.name}
                       >
-                        <span className="episode-label">Tập</span>
-                        <span className="episode-number">{episodeNum}</span>
+                        {episodeNum}
                       </button>
                     );
                   })}
                 </div>
               ) : (
                 <div className="no-episodes">
-                  <p>Chưa có tập phim nào được cập nhật.</p>
-                  <p className="text-sm mt-2 text-gray-500">Vui lòng quay lại sau.</p>
+                  <FaEye className="no-episodes-icon" />
+                  <p className="no-episodes-text">Chưa có tập phim nào được cập nhật.</p>
+                  <p className="no-episodes-subtext">Vui lòng quay lại sau.</p>
                 </div>
               )}
             </div>
@@ -425,212 +423,433 @@ const WatchMovie = () => {
       </main>
       
       <style dangerouslySetInnerHTML={{ __html: `
+/* ===== Base Styles ===== */
 .watch-page {
   min-height: 100vh;
-  background: #0f172a;
-  color: white;
-  padding-top: 1rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
 }
 
 .main-content {
-  min-height: calc(100vh - 140px);
-  padding: 1rem 0 3rem;
+  min-height: calc(100vh - 80px);
+  padding: 0;
 }
 
-/* Loading & Error States */
-.loading-section,
-.error-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-  text-align: center;
+/* ===== Video Wrapper ===== */
+.video-wrapper {
+  background: #101828;
+  padding: 2rem 0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-.loading-text {
-  margin-top: 1rem;
-  color: #a0a0a0;
-  font-size: 1.1rem;
-}
-
-.alert {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-}
-
-.alert-danger {
-  color: #fecaca;
-  background-color: #7f1d1d;
-  border-color: #fecaca;
-}
-
-.btn {
-  display: inline-block;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  border-radius: 0.25rem;
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, 
-              border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  border-radius: 0.2rem;
-}
-
-.btn-outline-danger {
-  color: #fecaca;
-  border-color: #fecaca;
-  background-color: transparent;
-}
-
-.btn-outline-danger:hover {
-  color: #0f172a;
-  background-color: #fecaca;
-  border-color: #fecaca;
-}
-
-/* Video Section */
-.video-section {
-  margin-bottom: 3rem;
-}
-
-.video-container {
-  max-width: 1200px;
+.video-container-main {
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 1.5rem;
 }
 
-.video-title {
-  font-size: 1.75rem;
-  font-weight: 700;
+/* ===== Video Header ===== */
+.video-header {
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.625rem 1.25rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(-4px);
+}
+
+.back-text {
+  display: inline;
+}
+
+.movie-info-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.movie-title-main {
+  font-size: 2rem;
+  font-weight: 800;
   margin: 0;
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
+  background: linear-gradient(135deg, #f43f5e 0%, #f59e0b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  display: inline-block;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-.video-episode {
-  font-size: 1rem;
-  color: #94a3b8;
-  margin: 0;
+.movie-meta {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.video-player {
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.meta-icon {
+  font-size: 0.85rem;
+}
+
+.meta-badge {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.meta-badge.quality {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.current-episode-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fbbf24;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.5rem 0;
+}
+
+.play-icon {
+  font-size: 0.85rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ===== Server Section ===== */
+.server-section {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.server-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.server-icon {
+  color: #f59e0b;
+}
+
+.server-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.server-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.server-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.server-btn:hover::before {
+  left: 100%;
+}
+
+.server-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.server-btn.active {
+  background: linear-gradient(135deg, #f43f5e 0%, #f59e0b 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4);
+}
+
+/* ===== Video Player ===== */
+.video-player-wrapper {
   position: relative;
   width: 100%;
-  height: 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.player-container {
+  position: relative;
+  width: 100%;
   padding-bottom: 56.25%;
   background: #000;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.video-iframe,
+.video-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .video-placeholder {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-content {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: #64748b;
   width: 100%;
   padding: 2rem;
 }
 
-/* Episodes Section */
-.episodes-section {
-  background: rgba(15, 23, 42, 0.8);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 2rem 0;
-  border-radius: 0.75rem;
-  margin-top: 2rem;
+.placeholder-icon {
+  font-size: 4rem;
+  color: #475569;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.placeholder-text {
+  color: #94a3b8;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* ===== Episodes Section ===== */
+.episodes-wrapper {
+  background: #101828;
+  padding: 3rem 0;
+  border-radius: 1rem;
+}
+
+.episodes-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.episodes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.episodes-title-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.list-icon {
+  font-size: 1.5rem;
+  color: #f59e0b;
 }
 
 .episodes-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 800;
   margin: 0;
   color: #fff;
+  letter-spacing: -0.02em;
 }
 
-.episodes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  gap: 0.75rem;
-  padding: 0 1rem;
-  max-width: 100%;
-}
-
-.episode-btn {
-  min-width: 70px;
-  height: 50px;
+.episodes-count {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background-color: #1e293b;
-  color: #e2e8f0;
-  border: 2px solid transparent;
-  border-radius: 0.5rem;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+}
+
+.count-current {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #f43f5e;
+}
+
+.count-separator {
+  font-size: 1.25rem;
+  color: #475569;
+  margin: 0 0.25rem;
+}
+
+.count-total {
+  font-size: 1.25rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0.5rem;
-  position: relative;
-}
-
-.episode-label {
-  font-size: 0.7rem;
-  opacity: 0.7;
-  font-weight: 500;
-}
-
-.episode-number {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.episode-btn:hover {
-  background-color: #334155;
-  transform: translateY(-2px);
-  border-color: #475569;
-}
-
-.episode-btn.current-episode {
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
-  color: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transform: translateY(-2px);
-  border-color: transparent;
-}
-
-.episode-btn.current-episode .episode-label {
-  opacity: 0.9;
-}
-
-.no-episodes {
-  text-align: center;
-  padding: 3rem 2rem;
   color: #94a3b8;
 }
 
-/* No Data State */
+.count-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+/* ===== Episodes Grid ===== */
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.episode-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+}
+
+.episode-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.episode-btn.active {
+  background: #f43f5e;
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 0.6rem;
+  }
+  
+  .episode-btn {
+    font-size: 0.9rem;
+    padding: 0.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .episode-btn {
+    font-size: 0.85rem;
+  }
+}
+
+/* ===== No Episodes ===== */
+.no-episodes {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.no-episodes-icon {
+  font-size: 3rem;
+  color: #475569;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.no-episodes-text {
+  font-size: 1.1rem;
+  color: #cbd5e1;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.no-episodes-subtext {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* ===== Loading & Error States ===== */
+.loading-section,
+.error-section,
 .no-data-section {
   display: flex;
   justify-content: center;
@@ -640,84 +859,337 @@ const WatchMovie = () => {
   padding: 2rem;
 }
 
+.loading-text {
+  margin-top: 1.5rem;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.alert {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.alert-danger {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.8);
+  border: 1px solid rgba(254, 202, 202, 0.3);
+}
+
+.btn {
+  display: inline-block;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  border: 1px solid transparent;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 0.375rem;
+}
+
+.btn-outline-danger {
+  color: #fecaca;
+  border-color: #fecaca;
+  background-color: transparent;
+}
+
+.btn-outline-danger:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
 .btn-retry {
-  background: linear-gradient(45deg, #f43f5e, #f59e0b);
+  background: linear-gradient(135deg, #f43f5e 0%, #f59e0b 100%);
   border: none;
   color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 9999px;
-  font-weight: 600;
+  padding: 0.875rem 2rem;
+  border-radius: 50px;
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
   text-decoration: none;
-  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4);
 }
 
 .btn-retry:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(244, 63, 94, 0.5);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .video-title {
-    font-size: 1.5rem;
-  }
-  
-  .video-episode {
-    font-size: 0.95rem;
+/* ===== Responsive Design ===== */
+@media (max-width: 1024px) {
+  .movie-title-main {
+    font-size: 1.75rem;
   }
   
   .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.875rem;
   }
   
-  .episode-btn {
-    min-width: 65px;
-    height: 45px;
+  .episode-card {
+    min-height: 75px;
+    padding: 0.875rem;
   }
   
-  .episode-label {
-    font-size: 0.65rem;
+  .episode-number-display {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-wrapper {
+    padding: 1.5rem 0;
   }
   
-  .episode-number {
-    font-size: 0.95rem;
+  .video-container-main,
+  .episodes-container {
+    padding: 0 1rem;
+  }
+  
+  .movie-title-main {
+    font-size: 1.5rem;
+  }
+  
+  .movie-meta {
+    gap: 0.5rem;
+  }
+  
+  .meta-badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+  }
+  
+  .server-section {
+    padding: 0.875rem 1rem;
+  }
+  
+  .episodes-title {
+    font-size: 1.5rem;
+  }
+  
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .episode-card {
+    min-height: 70px;
+    padding: 0.75rem;
+  }
+  
+  .episode-number-display {
+    font-size: 1.375rem;
+  }
+  
+  .episode-label-display {
+    font-size: 0.7rem;
+  }
+  
+  .back-text {
+    display: none;
+  }
+  
+  .back-button {
+    padding: 0.625rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
   }
 }
 
 @media (max-width: 480px) {
-  .video-title {
-    font-size: 1.3rem;
+  .video-wrapper {
+    padding: 1rem 0;
   }
   
-  .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  .video-container-main,
+  .episodes-container {
+    padding: 0 0.75rem;
+  }
+  
+  .movie-title-main {
+    font-size: 1.25rem;
+  }
+  
+  .current-episode-info {
+    font-size: 0.85rem;
+  }
+  
+  .server-buttons {
     gap: 0.5rem;
   }
   
-  .episode-btn {
-    min-width: 60px;
-    height: 42px;
-    border-radius: 0.375rem;
+  .server-btn {
+    padding: 0.45rem 1.25rem;
+    font-size: 0.85rem;
   }
   
-  .episode-label {
-    font-size: 0.6rem;
+  .episodes-wrapper {
+    padding: 2rem 0;
   }
   
-  .episode-number {
-    font-size: 0.9rem;
+  .episodes-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
   
   .episodes-title {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
   }
+  
+  .list-icon {
+    font-size: 1.25rem;
+  }
+  
+  .episodes-count {
+    padding: 0.375rem 0.875rem;
+  }
+  
+  .count-current {
+    font-size: 1.25rem;
+  }
+  
+  .count-total {
+    font-size: 1rem;
+  }
+  
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 0.625rem;
+  }
+  
+  .episode-card {
+    min-height: 65px;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+  }
+  
+  .episode-number-display {
+    font-size: 1.25rem;
+  }
+  
+  .episode-label-display {
+    font-size: 0.65rem;
+  }
+  
+  .episode-playing {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .playing-icon {
+    font-size: 0.6rem;
+  }
+}
+
+/* ===== Utility Classes ===== */
+.container-fluid {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.py-5 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.ms-2 {
+  margin-left: 0.5rem;
+}
+
+.inline {
+  display: inline;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.text-light {
+  color: #f8fafc;
+}
+
+.text-muted {
+  color: #94a3b8;
+}
+
+.text-6xl {
+  font-size: 3.75rem;
+  line-height: 1;
+}
+
+/* ===== Smooth Animations ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.video-container-main,
+.episodes-container {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* ===== Scrollbar Styling ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(60, 60, 60, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(60, 60, 60, 0.8);
 }
       ` }} />
     </div>

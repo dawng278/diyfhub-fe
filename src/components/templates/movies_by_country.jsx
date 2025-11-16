@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getMoviesByCountry } from '../../services/apiService'
 import arrowCircleLeft from '../../assets/arrow-circle-left.svg'
 import arrowCircleRight from '../../assets/arrow-circle-right.svg'
 
 function MoviesByCountry() {
+  const navigate = useNavigate()
   const [moviesByCountry, setMoviesByCountry] = useState({
     'han-quoc': [],
     'trung-quoc': [],
@@ -161,15 +164,15 @@ function MoviesByCountry() {
                     <h2 className={`${country.gradient} bg-clip-text text-transparent text-xl sm:text-2xl md:text-3xl font-bold sm:font-extrabold mb-1 sm:mb-1.5 leading-tight`}>
                       {country.name}
                     </h2>
-                    <a 
-                      href={`/quoc-gia/${country.slug}`}
+                    <Link 
+                      to={`/quoc-gia/${country.slug}/${encodeURIComponent(country.name)}`}
                       className="group inline-flex items-center text-xs sm:text-sm text-gray-400 hover:text-white transition-colors font-medium"
                     >
                       Xem toàn bộ
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-1.5 transform group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                    </a>
+                    </Link>
                   </div>
 
                   {/* Movies Carousel */}
@@ -199,6 +202,7 @@ function MoviesByCountry() {
                       onTouchEnd={() => handleTouchEnd(country.slug)}
                     >
                       {visibleMovies.map((movie, index) => {
+                        console.log('Movie object:', movie); // Log movie object to check its structure
                         let posterUrl = movie.thumb_url || movie.poster_url || movie.image || (movie.poster && movie.poster.url)
                         
                         if (posterUrl && !posterUrl.startsWith('http')) {
@@ -210,7 +214,11 @@ function MoviesByCountry() {
                         }
                         
                         return (
-                          <div key={movie.slug || index} className="group cursor-pointer">
+                          <div 
+                            key={movie.slug || index} 
+                            className="group cursor-pointer"
+                            onClick={() => navigate(`/phim/${movie._id}/${movie.slug}`)}
+                          >
                             {/* Movie Poster */}
                             <div className="relative w-full aspect-[3/2] rounded-lg overflow-hidden bg-gray-900 mb-2 shadow-lg">
                               <img

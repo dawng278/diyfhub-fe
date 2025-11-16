@@ -156,7 +156,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-950">
       <Header categories={initialData.categories} />
-      <main className="pt-16">
+      <main>
         <HeroBanner movies={initialData.heroBanner} />
         <CategoriesSection categories={initialData.categories} />
         

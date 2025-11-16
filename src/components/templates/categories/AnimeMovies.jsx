@@ -326,7 +326,7 @@ const AnimeMovies = () => {
                                 {/* Action Buttons */}
                                 <div className="flex gap-3 pt-2 sm:pt-4">
                                     <Link 
-                                        to={`/phim/${currentAnime.id}`}
+                                        to={`/phim/mal-${currentAnime.id}/${currentAnime.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
                                         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all transform shadow-lg text-sm sm:text-base"
                                     >
                                         <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="white" />

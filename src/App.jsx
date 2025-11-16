@@ -7,6 +7,8 @@ const CategoryListPage = lazy(() => import('./pages/CategoryListPage'));
 const CategoryMovies = lazy(() => import('./components/templates/CategoryMovies.jsx'));
 const MoviesGridByCountry = lazy(() => import('./components/templates/MoviesGridByCountry.jsx'));
 const MovieDetailPage = lazy(() => import('./pages/MovieDetail'));
+const SingleMoviesPage = lazy(() => import('./pages/SingleMoviesPage'));
+const SeriesMoviesPage = lazy(() => import('./pages/SeriesMoviesPage'));
 import WatchMovie from './pages/WatchMovie';
 import MoviesGridByCategory from './components/templates/MoviesGridByCategory.jsx';
 
@@ -52,9 +54,12 @@ function App() {
           <Route path="/quoc-gia/:countrySlug/:countryName" element={<MoviesGridByCountry />} />
           
           {/* Movie detail routes */}
-          <Route path="/movie/:movieSlug" element={<MovieDetailPage />} />
           <Route path="/phim/:movieId/:movieSlug" element={<MovieDetailPage />} />
           <Route path="/xem-phim/:movieSlug/:episodeSlug" element={<WatchMovie />} />
+          
+          {/* Movie type routes */}
+          <Route path="/phim-le" element={<SingleMoviesPage />} />
+          <Route path="/phim-bo" element={<SeriesMoviesPage />} />
           
           {/* Search route */}
           {/* <Route path="/tim-kiem" element={<SearchPage />} /> */}

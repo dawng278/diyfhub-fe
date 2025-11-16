@@ -303,7 +303,7 @@ const LatestUpdatedMovies = () => {
                                         ref={index === 0 ? itemRef : null}
                                         className="flex-shrink-0 w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(20%-0.8rem)] xl:w-[calc(16.666%-0.833rem)] snap-start group"
                                     >
-                                        <Link to={`/phim/${movie.slug || movie._id}`} className="block">
+                                        <Link to={`/phim/${movie._id}/${movie.slug || 'movie'}`} className="block">
                                             <div className="movie-card-container">
                                                 <div className={`border-mask ${polygonClass}`}>
                                                     <div className={`content-mask ${polygonClass}`}>
