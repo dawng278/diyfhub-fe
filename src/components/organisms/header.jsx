@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react' // Thêm useEffect
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.svg'
 import searchNormal from '../../assets/search-normal.svg'
 import arrowDown from '../../assets/arrow-down.svg'
@@ -20,12 +21,31 @@ const CloseIcon = () => (
 // ---------------------------------------------------
 
 function Navbar() {
+    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [genres, setGenres] = useState([]);
     const [countries, setCountries] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            navigate(`/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    const handleSearchInputChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch(e);
+        }
+    };
 
     // 1. (Từ bản "chuẩn") Tự động khóa scroll của trang khi menu mobile mở
     useEffect(() => {
@@ -188,19 +208,24 @@ function Navbar() {
 
                     {/* Search (Desktop) */}
                     {/* 5. (Gộp) Dùng h-[36px] cho đồng bộ với nút "Thành viên" mới của bạn */}
-                    <div className="w-full max-w-[352px] h-[36px] relative bg-[#83838380] rounded-[3px]">
-                        <label htmlFor="search-input-desktop" className="sr-only">Tìm kiếm</label>
-                        <img
-                            className="absolute w-3.5 h-3.5 top-1/2 left-3 -translate-y-1/2 pointer-events-none"
-                            alt="" src={searchNormal} aria-hidden="true"
-                        />
-                        <input
-                            id="search-input-desktop"
-                            type="search"
-                            placeholder="Tìm kiếm phim, diễn viên"
-                            className="w-full h-full text-sm [font-family:'Inter-Regular',Helvetica] font-normal text-[#c4c4c4] bg-transparent border-0 outline-none focus:text-white pl-10 pr-3"
-                        />
-                    </div>
+                    <form onSubmit={handleSearch} className="w-full max-w-[352px]">
+                        <div className="w-full h-[36px] relative bg-[#83838380] rounded-[3px]">
+                            <label htmlFor="search-input-desktop" className="sr-only">Tìm kiếm</label>
+                            <img
+                                className="absolute w-3.5 h-3.5 top-1/2 left-3 -translate-y-1/2 pointer-events-none"
+                                alt="" src={searchNormal} aria-hidden="true"
+                            />
+                            <input
+                                id="search-input-desktop"
+                                type="search"
+                                placeholder="Tìm kiếm phim"
+                                value={searchQuery}
+                                onChange={handleSearchInputChange}
+                                onKeyPress={handleSearchKeyPress}
+                                className="w-full h-full text-sm [font-family:'Inter-Regular',Helvetica] font-normal text-[#c4c4c4] bg-transparent border-0 outline-none focus:text-white pl-10 pr-3"
+                            />
+                        </div>
+                    </form>
 
                     {/* Navigation (Desktop) - Giữ nguyên text-xs từ code của bạn */}
                     <nav

@@ -10,8 +10,8 @@ const MovieGridCard = ({ movie }) => {
   const getImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://phimapi.com';
-    return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+    // Use the same API base URL as the API service
+    return `https://phimapi.com/${path.replace(/^\//, '')}`;
   };
 
   const imageUrl = getImageUrl(movie.poster_url || movie.poster_path || movie.poster);

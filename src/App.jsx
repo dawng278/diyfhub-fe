@@ -11,6 +11,7 @@ const MovieDetailPage = lazy(() => import('./pages/MovieDetail'));
 const SingleMoviesPage = lazy(() => import('./pages/SingleMoviesPage'));
 const SeriesMoviesPage = lazy(() => import('./pages/SeriesMoviesPage'));
 const AnimePage = lazy(() => import('./pages/AnimePage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
 import WatchMovie from './pages/WatchMovie';
 import MoviesGridByCategory from './components/templates/MoviesGridByCategory.jsx';
 
@@ -66,7 +67,7 @@ function App() {
           <Route path="/anime" element={<AnimePage />} />
           
           {/* Search route */}
-          {/* <Route path="/tim-kiem" element={<SearchPage />} /> */}
+          <Route path="/tim-kiem" element={<SearchPage />} />
           
           {/* 404 - Not Found */}
           <Route path="*" element={<NotFoundPage />} />

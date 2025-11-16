@@ -1,194 +1,142 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getMoviesByCategory } from '../services/apiService';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { searchMovies } from '../services/apiService';
+import { constructImageUrl } from '../services/apiService';
+import LoadingSpinner from '../components/atoms/LoadingSpinner';
 
-const AnimePage = () => {
+const ITEMS_PER_PAGE = 24;
+
+const SearchPage = () => {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const keyword = searchParams.get('keyword') || '';
+  
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
-  const ITEMS_PER_PAGE = 24;
-
-  const constructImageUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+  const fetchSearchResults = useCallback(async (page = 1) => {
+    if (!keyword.trim()) {
+      setMovies([]);
+      setLoading(false);
+      return;
     }
-    if (url.startsWith('/')) {
-      return `https://phimimg.com${url}`;
-    }
-    return `https://phimimg.com/${url}`;
-  };
 
-  const fetchMovies = useCallback(async (page = 1) => {
-    console.log('=== fetchMovies called with page:', page, '===');
-    setLoading(true);
-    setError(null);
-    
     try {
-      console.log('Calling getMoviesByCategory for hoat-hinh...');
-      // Try with 'hoathinh' (no dash) as the API might expect this format
-      const response = await getMoviesByCategory('hoat-hinh', {
-        page: page,
-        limit: ITEMS_PER_PAGE,
-        sortField: 'modified.time',
-        sortType: 'desc'
+      setLoading(true);
+      setError(null);
+      
+      const response = await searchMovies({
+        keyword: keyword.trim(),
+        page,
+        limit: ITEMS_PER_PAGE
       });
-      
-      console.log('API response received:', response);
-      
+
       if (response && response.data) {
-        const moviesData = response.data || [];
-        const paginationData = response.pagination || {};
-        
-        console.log('Total anime movies from API:', moviesData.length);
-        console.log('Sample movies:', moviesData.slice(0, 3));
-        
-        // Process movies data
-        const processedMovies = moviesData.map(movie => ({
+        const processedMovies = (response.data.items || []).map(movie => ({
           ...movie,
-          poster_url: constructImageUrl(movie.poster_url || movie.thumb_url || movie.poster),
+          poster_url: constructImageUrl(
+            movie.poster_url || 
+            movie.thumb_url ||
+            movie.poster_path || 
+            movie.poster
+          ),
           _id: movie._id || movie.id,
-          slug: movie.slug,
-          title: movie.name || movie.title,
-          imdb_rating: movie.tmdb?.vote_average || 0,
-          quality: movie.quality || movie.lang || 'HD',
-          episode_current: movie.episode_current || '',
-          episode_total: movie.episode_total || 0,
-          year: movie.year || '',
-          time: movie.time || '',
-          lang: movie.lang || 'Vietsub'
+          title: movie.name || movie.title || movie.origin_name || 'Không có tiêu đề',
+          name: movie.name || movie.title || movie.origin_name || 'Không có tiêu đề',
+          slug: movie.slug || movie._id || movie.id
         }));
-        
-        console.log('Setting movies:', processedMovies.length);
         setMovies(processedMovies);
-        
-        // Set pagination from API response
-        setTotalItems(paginationData.totalItems || 0);
-        setTotalPages(paginationData.totalPages || 1);
-        setCurrentPage(paginationData.currentPage || page);
-        
-        console.log('Pagination set - Total:', paginationData.totalItems, 'Pages:', paginationData.totalPages);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalItems(response.data.totalItems || 0);
       } else {
-        console.log('No data in response');
         setMovies([]);
+        setTotalPages(0);
+        setTotalItems(0);
       }
     } catch (err) {
-      console.error('Error fetching anime movies:', err);
-      setError('Không thể tải danh sách phim anime. Vui lòng thử lại sau.');
+      console.error('Error searching movies:', err);
+      setError('Không thể tải kết quả tìm kiếm. Vui lòng thử lại.');
+      setMovies([]);
+      setTotalPages(0);
+      setTotalItems(0);
     } finally {
-      console.log('fetchMovies completed, setting loading to false');
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    console.log('=== AnimePage useEffect triggered ===');
-    fetchMovies(1);
-  }, [fetchMovies]);
+  }, [keyword]);
 
   const handleMovieClick = (movie) => {
     navigate(`/phim/${movie._id}/${movie.slug}`);
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchSearchResults(1);
+  }, [keyword, fetchSearchResults]);
+
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
-      fetchMovies(page);
+      setCurrentPage(page);
+      fetchSearchResults(page);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#030712] py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="bg-gray-800 rounded-xl aspect-[2/3] mb-3"></div>
-                <div className="h-4 bg-gray-800 rounded-lg w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-800 rounded-lg w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#030712] py-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto bg-gray-900 rounded-xl shadow-2xl p-8 text-center border border-gray-800">
-            <div className="mb-4">
-              <svg className="w-16 h-16 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-red-500 mb-4">Có lỗi xảy ra</h2>
-            <p className="text-gray-300 mb-6">{error}</p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={() => fetchMovies(currentPage)}
-                className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
-              >
-                Thử lại
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold border border-gray-700"
-              >
-                Về trang chủ
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (movies.length === 0) {
+  if (loading && currentPage === 1) {
     return (
-      <div className="min-h-screen bg-[#030712] py-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto bg-gray-900 rounded-xl shadow-2xl p-8 text-center border border-gray-800">
-            <div className="mb-4">
-              <svg className="w-16 h-16 text-gray-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-200 mb-4">Không tìm thấy phim anime</h2>
-            <p className="text-gray-400 mb-6">Không có phim anime nào được tìm thấy.</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
-            >
-              Về trang chủ
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] py-8 pt-20">
+    <div className="min-h-screen bg-gray-900 text-white py-8 pt-20">
       <div className="container mx-auto px-4">
-        {/* Header với gradient */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-500 via-red-600 to-pink-600 bg-clip-text text-transparent mb-2">
-            Phim Anime
-            {totalItems > 0 && <span className="text-gray-500 ml-2">({totalItems} phim)</span>}
+          <h1 className="text-3xl font-bold mb-2">
+            {keyword ? `Kết quả tìm kiếm: "${keyword}"` : 'Tìm kiếm phim'}
           </h1>
-          <div className="h-1 w-24 bg-gradient-to-r from-red-500 to-pink-600 rounded-full"></div>
+          {totalItems > 0 && (
+            <p className="text-gray-400">
+              Tìm thấy {totalItems} kết quả
+            </p>
+          )}
         </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+
+        {error && (
+          <div className="bg-red-600 bg-opacity-20 border border-red-600 text-red-400 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        {!keyword.trim() && (
+          <div className="text-center py-16">
+            <p className="text-gray-400 text-lg">Vui lòng nhập từ khóa để tìm kiếm phim</p>
+          </div>
+        )}
+
+        {keyword.trim() && movies.length === 0 && !loading && !error && (
+          <div className="text-center py-16">
+            <p className="text-gray-400 text-lg">Không tìm thấy phim nào phù hợp với "{keyword}"</p>
+            <p className="text-gray-500 mt-2">Thử tìm với từ khóa khác nhé!</p>
+          </div>
+        )}
+
+        {movies.length > 0 && (
+          <>
+            {loading && (
+              <div className="flex justify-center py-4">
+                <LoadingSpinner />
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
           {movies.map((movie) => (
             <div 
               key={movie._id || movie.slug}
@@ -246,16 +194,23 @@ const AnimePage = () => {
                   )}
                 </div>
                 
-                {/* Quality Badge */}
-                {movie.quality && (
-                  <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded font-bold">
-                    {movie.quality}
-                  </div>
-                )}
+                {/* Quality & Language Badge */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+                  {movie.quality && (
+                    <span className="bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-lg backdrop-blur-sm">
+                      {movie.quality}
+                    </span>
+                  )}
+                  {movie.lang && (
+                    <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-lg backdrop-blur-sm">
+                      {movie.lang}
+                    </span>
+                  )}
+                </div>
                 
                 {/* IMDB Rating */}
                 {movie.imdb_rating > 0 && (
-                  <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full flex items-center">
+                  <div className="absolute top-2 right-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center shadow-lg backdrop-blur-sm">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
@@ -265,36 +220,27 @@ const AnimePage = () => {
               </div>
               
               {/* Movie Info */}
-              <div className="p-4">
-                <h3 className="font-bold text-white mb-2 line-clamp-2 min-h-[3rem] text-sm">
+              <div className="p-3">
+                <h3 
+                  className="font-semibold text-sm text-gray-100 mb-1.5 line-clamp-2 min-h-[40px] group-hover:text-red-500 transition-colors" 
+                  title={movie.title}
+                >
                   {movie.title}
                 </h3>
                 
-                <div className="space-y-1 text-xs text-gray-400">
-                  {movie.year && (
-                    <div className="flex items-center">
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {movie.year}
-                    </div>
-                  )}
-                  
-                  {movie.time && (
-                    <div className="flex items-center">
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {movie.time}
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center">
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4" />
-                    </svg>
-                    {movie.lang || 'Vietsub'}
-                  </div>
+                {/* Origin Name */}
+                {movie.origin_name && movie.origin_name !== movie.title && (
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-1" title={movie.origin_name}>
+                    {movie.origin_name}
+                  </p>
+                )}
+                
+                {/* Year and Type */}
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-gray-400">{movie.year || 'N/A'}</span>
+                  <span className="bg-gray-800 px-2 py-1 rounded-md text-gray-300 capitalize border border-gray-700">
+                    {movie.type === 'series' ? 'Phim bộ' : 'Phim lẻ'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -382,9 +328,11 @@ const AnimePage = () => {
             </div>
           </div>
         )}
-      </div>
+      </>
+      )}
     </div>
+  </div>
   );
 };
 
-export default AnimePage;
+export default SearchPage;
