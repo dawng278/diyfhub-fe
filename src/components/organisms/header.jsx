@@ -34,6 +34,8 @@ function Navbar() {
         e.preventDefault();
         if (searchQuery.trim()) {
             navigate(`/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}`);
+            // Close mobile menu after search on mobile/tablet
+            setIsMobileMenuOpen(false);
         }
     };
 
@@ -339,12 +341,6 @@ function Navbar() {
 
                 {/* Nút Hamburger (Mobile) */}
                 <div className="lg:hidden flex items-center gap-4">
-                    <button 
-                        className="text-white p-2"
-                        aria-label="Tìm kiếm"
-                    >
-                        <img src={searchNormal} alt="Tìm kiếm" className="w-5 h-5" />
-                    </button>
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         aria-label="Mở menu"
@@ -369,19 +365,24 @@ function Navbar() {
                         `}
             >
                 {/* Search (Mobile) */}
-                <div className="w-full h-[36px] mb-5 relative bg-[#83838380] rounded-[3px]">
-                    <label htmlFor="search-input-mobile" className="sr-only">Tìm kiếm</label>
-                    <img
-                        className="absolute w-4 h-4 top-1/2 left-3 -translate-y-1/2 pointer-events-none"
-                        alt="" src={searchNormal} aria-hidden="true"
-                    />
-                    <input
-                        id="search-input-mobile"
-                        type="search"
-                        placeholder="Tìm kiếm phim, diễn viên"
-                        className="w-full h-full text-sm [font-family:'Inter-Regular',Helvetica] font-normal text-[#c4c4c4] bg-transparent border-0 outline-none focus:text-white pl-10 pr-3"
-                    />
-                </div>
+                <form onSubmit={handleSearch} className="w-full mb-5">
+                    <div className="w-full h-[36px] relative bg-[#83838380] rounded-[3px]">
+                        <label htmlFor="search-input-mobile" className="sr-only">Tìm kiếm</label>
+                        <img
+                            className="absolute w-4 h-4 top-1/2 left-3 -translate-y-1/2 pointer-events-none"
+                            alt="" src={searchNormal} aria-hidden="true"
+                        />
+                        <input
+                            id="search-input-mobile"
+                            type="search"
+                            placeholder="Tìm kiếm phim"
+                            value={searchQuery}
+                            onChange={handleSearchInputChange}
+                            onKeyPress={handleSearchKeyPress}
+                            className="w-full h-full text-sm [font-family:'Inter-Regular',Helvetica] font-normal text-[#c4c4c4] bg-transparent border-0 outline-none focus:text-white pl-10 pr-3"
+                        />
+                    </div>
+                </form>
 
                 {/* Navigation (Mobile) */}
                 <nav className="flex flex-col space-y-2 mb-5" aria-label="Điều hướng di động">
