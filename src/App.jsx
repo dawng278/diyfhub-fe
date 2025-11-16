@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/organisms/header';
-
+import Footer from './components/organisms/footer';
 // Lazy load pages
 const HomePage = lazy(() => import('./pages/homePage'));
 const CategoryListPage = lazy(() => import('./pages/CategoryListPage'));
@@ -14,6 +14,12 @@ const AnimePage = lazy(() => import('./pages/AnimePage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 import WatchMovie from './pages/WatchMovie';
 import MoviesGridByCategory from './components/templates/MoviesGridByCategory.jsx';
+// Import page components for footer links
+import GioiThieu from './components/organisms/Gioithieu';
+import LienHe from './components/organisms/Lienhe';
+import ChinhSach from './components/organisms/Chinhsach';
+import DieuKhoan from './components/organisms/Dieukhoan';
+import HoiDap from './components/organisms/Hoidap';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -44,36 +50,46 @@ const NotFoundPage = () => (
 // Main App component with routing
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          
-          {/* Category routes */}
-          <Route path="/the-loai" element={<CategoryListPage />} />
-          <Route path="/the-loai/:categoryId/:categoryName" element={<MoviesGridByCategory />} />
-          
-          {/* Country routes */}
-          <Route path="/quoc-gia/:countrySlug/:countryName" element={<MoviesGridByCountry />} />
-          
-          {/* Movie detail routes */}
-          <Route path="/phim/:movieId/:movieSlug" element={<MovieDetailPage />} />
-          <Route path="/xem-phim/:movieSlug/:episodeSlug" element={<WatchMovie />} />
-          
-          {/* Movie type routes */}
-          <Route path="/phim-le" element={<SingleMoviesPage />} />
-          <Route path="/phim-bo" element={<SeriesMoviesPage />} />
-          <Route path="/anime" element={<AnimePage />} />
-          
-          {/* Search route */}
-          <Route path="/tim-kiem" element={<SearchPage />} />
-          
-          {/* 404 - Not Found */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
-    </Router>
+    <div className="min-h-screen bg-[#030712]">
+      <Router>
+        <Navbar />
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            
+            {/* Category routes */}
+            <Route path="/the-loai" element={<CategoryListPage />} />
+            <Route path="/the-loai/:categoryId/:categoryName" element={<MoviesGridByCategory />} />
+            
+            {/* Country routes */}
+            <Route path="/quoc-gia/:countrySlug/:countryName" element={<MoviesGridByCountry />} />
+            
+            {/* Movie detail routes */}
+            <Route path="/phim/:movieId/:movieSlug" element={<MovieDetailPage />} />
+            <Route path="/xem-phim/:movieSlug/:episodeSlug" element={<WatchMovie />} />
+            
+            {/* Movie type routes */}
+            <Route path="/phim-le" element={<SingleMoviesPage />} />
+            <Route path="/phim-bo" element={<SeriesMoviesPage />} />
+            <Route path="/anime" element={<AnimePage />} />
+            
+            {/* Search route */}
+            <Route path="/tim-kiem" element={<SearchPage />} />
+            
+            {/* Footer link routes */}
+            <Route path="/gioi-thieu" element={<GioiThieu />} />
+            <Route path="/lien-he" element={<LienHe />} />
+            <Route path="/chinh-sach" element={<ChinhSach />} />
+            <Route path="/dieu-khoan" element={<DieuKhoan />} />
+            <Route path="/hoi-dap" element={<HoiDap />} />
+            
+            {/* 404 - Not Found */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+        <Footer />
+      </Router>
+    </div>
   );
 }
 
