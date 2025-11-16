@@ -237,6 +237,9 @@ const MovieDetail = () => {
   };
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     // Reset states when URL parameters change
     setMovie(null);
     setRelatedMovies([]);
@@ -448,6 +451,12 @@ const MovieDetail = () => {
   return (
     <div className="min-h-screen bg-gray-900 pt-20 pb-12">
       <div className="container mx-auto px-4">
+        {/* Movie Title Above Backdrop - Mobile Only */}
+        <div className="text-center mb-6 md:hidden">
+          <h1 className="text-3xl font-bold text-white">{movie.name}</h1>
+          <p className="text-gray-400 text-lg mt-2">{movie.origin_name || movie.original_name}</p>
+        </div>
+        
         {/* Movie Header with Backdrop */}
         <div
           className="relative h-64 md:h-96 flex items-end rounded-lg overflow-hidden mb-8"
