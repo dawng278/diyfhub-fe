@@ -156,7 +156,7 @@ const MoviesGrid = () => {
   };
 
   const handleMovieClick = (movie) => {
-    navigate(`/movie/${movie.slug}`);
+    navigate(`/phim/${movie._id}/${movie.slug}`);
   };
 
   useEffect(() => {
