@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import ScrollToTopLink from "../atoms/ScrollToTopLink";
 import logo from "../../assets/logo.svg";
 import tiktok from "../../assets/tiktok.svg";
 import facebook from "../../assets/facebook.svg";
@@ -74,21 +75,21 @@ function footer() {
 
       {/* Liên kết */}
       <div className="flex flex-wrap justify-center md:justify-start mb-4 text-white">
-        <Link to="/hoi-dap" className="mr-6 text-[14px] hover:text-red-400">
+        <ScrollToTopLink to="/hoi-dap" className="mr-6 text-[14px] hover:text-red-400">
           Hỏi đáp
-        </Link>
-        <Link to="/chinh-sach" className="mr-6 text-[14px] hover:text-red-400">
+        </ScrollToTopLink>
+        <ScrollToTopLink to="/chinh-sach" className="mr-6 text-[14px] hover:text-red-400">
           Chính sách bảo mật
-        </Link>
-        <Link to="/dieu-khoan" className="mr-6 text-[14px] hover:text-red-400">
+        </ScrollToTopLink>
+        <ScrollToTopLink to="/dieu-khoan" className="mr-6 text-[14px] hover:text-red-400">
           Điều khoản sử dụng
-        </Link>
-        <Link to="/gioi-thieu" className="mr-6 text-[14px] hover:text-red-400">
+        </ScrollToTopLink>
+        <ScrollToTopLink to="/gioi-thieu" className="mr-6 text-[14px] hover:text-red-400">
           Giới thiệu
-        </Link>
-        <Link to="/lien-he" className="mr-6 text-[14px] hover:text-red-400">
+        </ScrollToTopLink>
+        <ScrollToTopLink to="/lien-he" className="mr-6 text-[14px] hover:text-red-400">
           Liên hệ
-        </Link>
+        </ScrollToTopLink>
       </div>
 
       {/* Mô tả */}
