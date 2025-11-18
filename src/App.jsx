@@ -10,6 +10,8 @@ const MoviesGridByCountry = lazy(() => import('./components/templates/MoviesGrid
 const MovieDetailPage = lazy(() => import('./pages/MovieDetail'));
 const SingleMoviesPage = lazy(() => import('./pages/SingleMoviesPage'));
 const SeriesMoviesPage = lazy(() => import('./pages/SeriesMoviesPage'));
+const ChieuRapMovies = lazy(() => import('./components/templates/categories/ChieuRapMovies.jsx'));
+const TVShowsMovies = lazy(() => import('./components/templates/categories/TVShowsMovies.jsx'));
 const AnimePage = lazy(() => import('./pages/AnimePage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 import WatchMovie from './pages/WatchMovie';
@@ -65,8 +67,13 @@ function App() {
             <Route path="/quoc-gia/:countrySlug/:countryName" element={<MoviesGridByCountry />} />
             
             {/* Movie detail routes */}
+            <Route path="/phim/:movieId" element={<MovieDetailPage />} />
             <Route path="/phim/:movieId/:movieSlug" element={<MovieDetailPage />} />
             <Route path="/xem-phim/:movieSlug/:episodeSlug" element={<WatchMovie />} />
+            
+            {/* Special category routes */}
+            <Route path="/phim-chieu-rap" element={<ChieuRapMovies />} />
+            <Route path="/tv-shows" element={<TVShowsMovies />} />
             
             {/* Movie type routes */}
             <Route path="/phim-le" element={<SingleMoviesPage />} />

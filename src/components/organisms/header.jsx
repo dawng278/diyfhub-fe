@@ -75,11 +75,17 @@ function Navbar() {
     }, [isScrolled]);
 
     const navigationItems = [
-        { label: "Phim lẻ", hasDropdown: false, path: "/phim-le" },
-        { label: "Phim bộ", hasDropdown: false, path: "/phim-bo" },
+        { label: "Phim Anime", hasDropdown: false, path: "/anime" },
+        
         { label: "Thể loại", hasDropdown: true, items: genres, type: 'genre' },
         { label: "Quốc gia", hasDropdown: true, items: countries, type: 'country' },
-        { label: "Phim Anime", hasDropdown: false, path: "/anime" },
+        { label: "Thêm", hasDropdown: true, items: [
+            { label: "Phim lẻ", hasDropdown: false, path: "/phim-le" },
+            { label: "Phim bộ", hasDropdown: false, path: "/phim-bo" },
+            { label: "Phim chiếu rạp", hasDropdown: false, path: "/phim-chieu-rap" },
+            { label: "TV Shows", hasDropdown: false, path: "/tv-shows" },
+        ], type: 'custom'}
+        
     ];
 
     // Check if mobile/tablet
@@ -267,16 +273,18 @@ function Navbar() {
                                                         item.items.map((subItem) => {
                                                             const href = item.type === 'country' 
                                                                 ? `/quoc-gia/${subItem.slug}/${encodeURIComponent(subItem.name)}`
-                                                                : `/the-loai/${subItem.id}/${subItem.slug}`;
+                                                                : item.type === 'custom'
+                                                                    ? subItem.path
+                                                                    : `/the-loai/${subItem.id}/${subItem.slug}`;
                                                             return (
                                                                 <a
-                                                                    key={subItem.id}
+                                                                    key={subItem.id || subItem.label}
                                                                     href={href}
                                                                     className="px-3 py-2 text-sm text-white hover:bg-[#333] rounded transition-colors whitespace-normal break-words"
-                                                                    title={subItem.name}
+                                                                    title={subItem.name || subItem.label}
                                                                     onClick={() => setActiveDropdown(null)}
                                                                 >
-                                                                    {subItem.name}
+                                                                    {subItem.name || subItem.label}
                                                                     {item.type === 'country' && subItem.movieCount && (
                                                                         <span className="ml-1 text-gray-400 text-xs">({subItem.movieCount})</span>
                                                                     )}
@@ -434,15 +442,17 @@ function Navbar() {
                                                     {item.items.map((subItem) => {
                                                         const href = item.type === 'country' 
                                                             ? `/quoc-gia/${subItem.slug}/${encodeURIComponent(subItem.name)}`
-                                                            : `/the-loai/${subItem.id}/${subItem.slug}`;
+                                                            : item.type === 'custom'
+                                                                ? subItem.path
+                                                                : `/the-loai/${subItem.id}/${subItem.slug}`;
                                                         return (
                                                             <a
-                                                                key={subItem.id}
+                                                                key={subItem.id || subItem.label}
                                                                 href={href}
                                                                 className="block text-sm text-gray-300 hover:text-white hover:bg-[#333] px-4 py-2 rounded transition-colors"
                                                                 onClick={() => setActiveDropdown(null)}
                                                             >
-                                                                {subItem.name}
+                                                                {subItem.name || subItem.label}
                                                                 {item.type === 'country' && subItem.movieCount && (
                                                                     <span className="ml-1 text-gray-400 text-xs">({subItem.movieCount})</span>
                                                                 )}
