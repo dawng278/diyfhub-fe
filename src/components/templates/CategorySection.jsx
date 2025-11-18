@@ -257,25 +257,20 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
                 
                 return (
                   <div key={`${movie.id || movie._id || index}`} className="shrink-0 w-32 sm:w-50 snap-start">
-                    <Link 
-                      to={`/phim/${movie.id || movie._id}/${movie.slug || movie.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || (movie.id || movie._id)}`} 
-                      className="block cursor-pointer"
-                    >
-                      <MovieCard
-                        key={movie.id || movie._id}
-                        id={movie.id || movie._id}
-                        title={title}
-                        posterPath={imageUrl}
-                        releaseDate={movie.year || movie.release_date?.substring(0, 4) || ''}
-                        rating={imdbRating}
-                        mediaType={movie.media_type || (movie.episode_current ? 'tv' : 'movie')}
-                        loading={loading}
-                        episodeCurrent={movie.episode_current}
-                        episodeTotal={movie.episode_total || movie.total_episodes}
-                        lang={movie.lang || 'vi'}
-                        linkPath={`/phim/${movie.id || movie._id}/${movie.slug || movie.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || (movie.id || movie._id)}`}
-                      />
-                    </Link>
+                    <MovieCard
+                      key={movie.id || movie._id}
+                      id={movie.id || movie._id}
+                      title={title}
+                      posterPath={imageUrl}
+                      releaseDate={movie.year || movie.release_date?.substring(0, 4) || ''}
+                      rating={imdbRating}
+                      mediaType={movie.media_type || (movie.episode_current ? 'tv' : 'movie')}
+                      loading={loading}
+                      episodeCurrent={movie.episode_current}
+                      episodeTotal={movie.episode_total || movie.total_episodes}
+                      lang={movie.lang || 'vi'}
+                      linkPath={`/phim/${movie.id || movie._id}/${movie.slug || movie.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || (movie.id || movie._id)}`}
+                    />
                   </div>
                 );
               })

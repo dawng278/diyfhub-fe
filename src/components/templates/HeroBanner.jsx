@@ -5,13 +5,13 @@ import heart from "../../assets/heart.svg";
 import infoCircle from "../../assets/info-circle.svg";
 
 import { useState, useEffect } from 'react';
-import { getNewMovies } from '../../services/apiService';
+import { getNewMovies, getMovieBySlug } from '../../services/apiService';
 
-function HeroBanner() {
+function HeroBanner({ movies: propMovies }) {
     const navigate = useNavigate();
-    const [movies, setMovies] = useState([]);
+    const [movies, setMovies] = useState(propMovies || []);
     const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!propMovies);
     const [currentMovieIndex, setCurrentMovieIndex] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -28,7 +28,13 @@ function HeroBanner() {
     }, []);
 
     useEffect(() => {
-        // Định nghĩa 1 hàm async để gọi API
+        // If movies are provided via props, don't fetch
+        if (propMovies && propMovies.length > 0) {
+          setMovies(propMovies);
+          setLoading(false);
+          return;
+        }
+
         const fetchData = async () => {
           try {
             setLoading(true);
@@ -38,36 +44,102 @@ function HeroBanner() {
             // Log the response for debugging
             console.log('Full API Response:', response);
             
-            // Handle different possible response structures
+            // Handle the response structure - extract items array
             let movieData = [];
-            if (Array.isArray(response)) {
-              // If the response is already an array
-              movieData = response;
-            } else if (response && response.items) {
-              // If the response has an items array
+            if (response && response.items && Array.isArray(response.items)) {
               movieData = response.items;
-            } else if (response && response.data) {
-              // If the response has a data field
-              movieData = Array.isArray(response.data) ? response.data : [];
+            } else if (response && response.data && response.data.items && Array.isArray(response.data.items)) {
+              movieData = response.data.items;
+            } else if (Array.isArray(response)) {
+              movieData = response;
             }
             
             console.log('Processed Movies Data:', movieData);
             
-            // Update state with the movie data
-            setMovies(movieData);
+            // Fetch detailed info for first 4 movies (for display)
+            const detailedMovies = await Promise.all(
+              movieData.slice(0, 4).map(async (movie) => {
+                try {
+                  const detailResponse = await getMovieBySlug(movie.slug);
+                  console.log(`=== Detail Response for ${movie.slug} ===`);
+                  console.log('Full response:', detailResponse);
+                  console.log('Response keys:', Object.keys(detailResponse || {}));
+                  
+                  // Check different possible structures
+                  let detailData = null;
+                  if (detailResponse?.movie) {
+                    detailData = detailResponse.movie;
+                    console.log('Found in detailResponse.movie');
+                  } else if (detailResponse?.data?.item) {
+                    detailData = detailResponse.data.item;
+                    console.log('Found in detailResponse.data.item');
+                  } else if (detailResponse?.data) {
+                    detailData = detailResponse.data;
+                    console.log('Found in detailResponse.data');
+                  } else if (detailResponse?.item) {
+                    detailData = detailResponse.item;
+                    console.log('Found in detailResponse.item');
+                  }
+                  
+                  if (detailData) {
+                    console.log('Detail data keys:', Object.keys(detailData));
+                    console.log('type:', detailData.type);
+                    console.log('quality:', detailData.quality);
+                    console.log('content:', detailData.content);
+                    console.log('category:', detailData.category);
+                    
+                    return {
+                      ...movie,
+                      type: detailData.type || movie.type,
+                      quality: detailData.quality || movie.quality,
+                      content: detailData.content || movie.content,
+                      genre: detailData.category?.map(cat => cat.name) || movie.genre,
+                    };
+                  }
+                  
+                  console.log('No detail data found, returning original movie');
+                  return movie;
+                } catch (err) {
+                  console.error(`Error fetching detail for ${movie.slug}:`, err);
+                  return movie;
+                }
+              })
+            );
+            
+            // Combine detailed movies with the rest
+            const finalMovies = [
+              ...detailedMovies,
+              ...movieData.slice(4)
+            ];
+            
+            console.log('Final Movies with Details:', finalMovies);
+            
+            setMovies(finalMovies);
             setError(null);
           } catch (err) {
             console.error('Lỗi khi gọi API:', err);
             console.error('Error details:', err.message);
             setError(err);
-            setMovies([]); // Ensure we have an empty array on error
           } finally {
             setLoading(false);
           }
         };
     
-        fetchData(); // Chạy hàm
-      }, []);
+        fetchData();
+      }, [propMovies]);
+
+      // Debug logging
+      console.log('=== DEBUG INFO ===');
+      console.log('Loading:', loading);
+      console.log('Error:', error);
+      console.log('Movies array length:', movies.length);
+      console.log('Current movie index:', currentMovieIndex);
+      console.log('Movies array:', movies);
+      if (movies.length > 0) {
+        console.log('First movie object:', movies[0]);
+        console.log('First movie keys:', Object.keys(movies[0]));
+      }
+      console.log('==================');
 
       let content;
       if (loading) {
@@ -79,6 +151,7 @@ function HeroBanner() {
       } else {
         // Hiển thị phim theo index hiện tại
         const movie = movies[currentMovieIndex];
+        
         // Use poster_url for mobile/tablet, thumb_url for desktop
         const backgroundImage = isMobile ? movie.poster_url : movie.thumb_url;
         
@@ -107,42 +180,52 @@ function HeroBanner() {
               {/* Movie Info Row */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
                 {/* IMDb Score */}
-                <div className="flex items-center gap-1 px-2 py-1 md:px-3 border border-[#eb3c2c]/90 rounded-md backdrop-blur-sm">
-                  <span className="text-white font-semibold text-xs md:text-sm">IMDb</span>
-                  <span className="text-white text-xs md:text-sm">{movie.tmdb?.vote_average || movie.quality || '0.0'}</span>
-                </div>
+                {movie.tmdb?.vote_average > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-1 md:px-3 border border-[#eb3c2c]/90 rounded-md backdrop-blur-sm">
+                    <span className="text-white font-semibold text-xs md:text-sm">IMDb</span>
+                    <span className="text-white text-xs md:text-sm">{movie.tmdb.vote_average}</span>
+                  </div>
+                )}
 
                 {/* Year */}
-                <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
-                  <span className="text-white text-xs md:text-sm font-medium">{movie.year || 'N/A'}</span>
-                </div>
+                {movie.year && (
+                  <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
+                    <span className="text-white text-xs md:text-sm font-medium">{movie.year}</span>
+                  </div>
+                )}
 
                 {/* Quality/Lang */}
-                <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
-                  <span className="text-white text-xs md:text-sm font-medium">{movie.lang || movie.quality || 'HD'}</span>
-                </div>
+                {movie.quality && (
+                  <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
+                    <span className="text-white text-xs md:text-sm font-medium">{movie.quality}</span>
+                  </div>
+                )}
 
                 {/* Type */}
-                <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
-                  <span className="text-white text-xs md:text-sm font-medium">
-                    {movie.type === 'series' ? 'Phim Bộ' : movie.type === 'single' ? 'Phim Lẻ' : movie.type || 'N/A'}
-                  </span>
-                </div>
+                {movie.type && (
+                  <div className="px-2 py-1 md:px-3 bg-white/20 rounded-md backdrop-blur-sm border border-white/30">
+                    <span className="text-white text-xs md:text-sm font-medium">{movie.type}</span>
+                  </div>
+                )}
               </div>
 
               {/* Genres */}
-              <div className="hidden md:flex items-center justify-center md:justify-start gap-2">
-                {movie.genre?.slice(0, 3).map((g, i) => (
-                  <span key={i} className="px-2 py-1 md:px-3 bg-white/10 rounded-full backdrop-blur-sm text-white text-xs md:text-sm">
-                    {g}
-                  </span>
-                ))}
-              </div>
+              {movie.genre && movie.genre.length > 0 && (
+                <div className="hidden md:flex items-center justify-center md:justify-start gap-2">
+                  {movie.genre.slice(0, 3).map((g, i) => (
+                    <span key={i} className="px-2 py-1 md:px-3 bg-white/10 rounded-full backdrop-blur-sm text-white text-xs md:text-sm">
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Description */}
-              <p className="hidden md:block text-white/90 text-sm md:text-base leading-relaxed line-clamp-2 md:line-clamp-3 drop-shadow-lg text-center md:text-left">
-                {movie.content || 'Không có mô tả'}
-              </p>
+              {movie.content && (
+                <p className="hidden md:block text-white/90 text-sm md:text-base leading-relaxed line-clamp-2 md:line-clamp-3 drop-shadow-lg text-center md:text-left">
+                  {movie.content}
+                </p>
+              )}
 
               {/* Action Buttons */}
               <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4 pt-2">

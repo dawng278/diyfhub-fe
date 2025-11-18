@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.svg'
 import searchNormal from '../../assets/search-normal.svg'
 import arrowDown from '../../assets/arrow-down.svg'
-import user from '../../assets/user.svg'
+// import user from '../../assets/user.svg'
 import { getCategories, getCountries } from '../../services/apiService';
 
 // --- Icons cho menu Mobile (Hamburger và Close) ---
@@ -308,20 +308,20 @@ function Navbar() {
                 </div>
 
                 {/* 6. (Gộp) "Thành viên" (Desktop) - Dùng style mới của bạn */}
-                <div className="hidden lg:flex w-[116px] h-[36px] rounded-[15px] border border-solid border-[#ea2121]">
+                {/* <div className="hidden lg:flex w-[116px] h-[36px] rounded-[15px] border border-solid border-[#ea2121]">
                     <a
                         href="/membership"
                         className="flex items-center justify-center w-full h-full gap-1.5 hover:opacity-80 transition-opacity"
                         aria-label="Đăng ký thành viên"
-                    >
+                    > */}
                         {/* Dùng h-[11px] từ code của bạn */}
-                        <img className="w-auto h-[11px]" alt="" src={user} aria-hidden="true" />
+                        {/* <img className="w-auto h-[11px]" alt="" src={user} aria-hidden="true" /> */}
                         {/* Dùng font-bold text-[10px] từ code của bạn */}
-                        <span className="[font-family:'Inter-Regular',Helvetica] font-bold text-white text-[10px] tracking-[0.24px] leading-[normal]">
+                        {/* <span className="[font-family:'Inter-Regular',Helvetica] font-bold text-white text-[10px] tracking-[0.24px] leading-[normal]">
                             Thành viên
                         </span>
                     </a>
-                </div>
+                </div> */}
 
                 {/* ======================================= */}
                 {/* === GIAO DIỆN MOBILE (Base) === */}
@@ -463,7 +463,7 @@ function Navbar() {
 
                 {/* 9. (Gộp) "Thành viên" (Mobile) - Dùng style h-[36px] và font-bold của bạn */}
                 {/* Giữ text-sm cho dễ đọc trên mobile */}
-                <div className="w-full h-[36px] rounded-[15px] border border-solid border-[#ea2121]">
+                {/* <div className="w-full h-[36px] rounded-[15px] border border-solid border-[#ea2121]">
                     <a
                         href="/membership"
                         className="flex items-center justify-center w-full h-full gap-2 hover:opacity-80 transition-opacity"
@@ -474,7 +474,7 @@ function Navbar() {
                             Thành viên
                         </span>
                     </a>
-                </div>
+                </div> */}
             </div>
         </header>
     )
