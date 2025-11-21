@@ -259,12 +259,12 @@ const LatestUpdatedMovies = () => {
             <div className="w-full max-w-full overflow-hidden sm:px-8 px-6 md:px-14">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h2 className="text-xl sm:text-2xl font-bold truncate max-w-[70%]">Phim mới cập nhật</h2>
-                    <button 
+                    {/* <button 
                         onClick={() => window.scrollTo(0, 0)}
                         className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm whitespace-nowrap ml-2 px-2 py-1 sm:px-3 sm:py-1.5 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors"
                     >
                         Xem thêm
-                    </button>
+                    </button> */}
                 </div>
                 
                 {error ? (

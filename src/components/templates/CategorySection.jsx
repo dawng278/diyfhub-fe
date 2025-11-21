@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getMoviesByCategory, getMoviesByCountry } from '../../services/apiService';
 import MovieCard from '../molecules/MovieCard';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -34,7 +34,7 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const scrollContainerRef = useRef(null);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const isMounted = useRef(true);
   const scrollTimeout = useRef(null);
 
@@ -184,12 +184,12 @@ const CategorySection = ({ categoryId, categoryName, apiPath = 'the-loai' }) => 
       <div className="mx-auto relative">
         <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
           <h2 className="text-xl sm:text-2xl font-bold truncate max-w-[70%]">{categoryName}</h2>
-          <button 
+          {/* <button 
             onClick={() => navigate(`/category/${categoryId}/${encodeURIComponent(categoryName)}`)}
             className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm whitespace-nowrap ml-2 px-2 py-1 sm:px-3 sm:py-1.5 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors"
           >
             Xem thêm
-          </button>
+          </button> */}
         </div>
 
         <div className="relative">
